@@ -2,43 +2,8 @@
 // Seeded once from the konkurss skill's data/*.md (the existing single source of truth), then edited as forms.
 import { randomUUID } from "node:crypto";
 
-export interface KV {
-	key: string;
-	value: string;
-}
-export interface Company {
-	fields: KV[];
-	persons: { role: string; person: string; note: string }[];
-	answers: KV[];
-}
-export interface Specialist {
-	id: string;
-	name: string;
-	field: string;
-	certificate: string;
-	/** A = our employee · B = employee of a subcontractor · C = person on a separate contract */
-	type: "A" | "B" | "C";
-	via: string;
-	note: string;
-	/** certificate valid until, YYYY-MM-DD; BIS is the authority */
-	validUntil: string;
-}
-export interface Evidence {
-	label: string;
-	path: string;
-}
-export interface RegObject {
-	id: string;
-	name: string;
-	fields: KV[];
-	evidence: Evidence[];
-}
-export interface Registers {
-	company: Company;
-	specialists: Specialist[];
-	gaps: { field: string; note: string }[];
-	objects: RegObject[];
-}
+export type { Company, Evidence, Expiry, KV, RegObject, Registers, Specialist } from "../../shared/registers.js";
+import type { Company, Expiry, KV, RegObject, Registers, Specialist } from "../../shared/registers.js";
 
 export const emptyRegisters = (): Registers => ({ company: { fields: [], persons: [], answers: [] }, specialists: [], gaps: [], objects: [] });
 
@@ -135,14 +100,6 @@ export function importFromSkillData(files: { uznemums: string; specialisti: stri
 }
 
 // ---------- checks ----------
-export interface Expiry {
-	id: string;
-	name: string;
-	validUntil: string;
-	status: "expired" | "soon";
-	days: number;
-}
-
 /** Certificates ending within `months` months (default 3) or already ended. Blank dates are not guessed. */
 export function expiring(specialists: Specialist[], now: Date = new Date(), months = 3): Expiry[] {
 	const out: Expiry[] = [];

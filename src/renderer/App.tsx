@@ -4,27 +4,24 @@ import { STEPS, type StepId } from "../shared/state";
 import type { Project } from "../shared/types";
 import { api, errorText, type StateBundle } from "./api";
 import { Chat } from "./screens/Chat";
+import { Aizpildit } from "./screens/Aizpildit";
+import { Pieradijumi } from "./screens/Pieradijumi";
+import { Varam } from "./screens/Varam";
 import { Dokumenti } from "./screens/Dokumenti";
+import { KasKoDara } from "./screens/KasKoDara";
+import { Registri } from "./screens/Registri";
 import { Prasibas } from "./screens/Prasibas";
 import { Versija } from "./screens/Versija";
 import { FirstRun } from "./screens/FirstRun";
 import { Konkursi } from "./screens/Konkursi";
 import { NewProject } from "./screens/NewProject";
 import { SettingsScreen } from "./screens/Settings";
-import { Stub } from "./screens/Stub";
+import { Parbaude } from "./screens/Parbaude";
+import { Paraksti } from "./screens/Paraksti";
+import { Rezultats } from "./screens/Rezultats";
 import { Banner, StateIcon } from "./ui";
 
-type View = { kind: "list" } | { kind: "new" } | { kind: "settings" } | { kind: "project"; id: string; step: StepId | "chat" };
-
-const STUBS: Record<string, { title: string; what: string; why?: string; phase: number }> = {
-	varam: { title: "4. Vai varam pieteikties", what: "Pirms sāc aizpildīt, app salīdzina konkursa prasības ar mūsu reģistriem.", phase: 4 },
-	kas: { title: "5. Kas ko dara", what: "Šeit savieno konkursa prasības ar mūsu cilvēkiem un objektiem.", phase: 3 },
-	aizpildit: { title: "6. Aizpildīt", what: "App saliek katram dokumentam sarakstu, kas kur jāieraksta un no kurienes tas nāk.", phase: 3 },
-	pieradijumi: { title: "7. Pierādījumi", what: "Katram pieredzes objektam vajag pierādījumus.", phase: 4 },
-	parbaude: { title: "8. Pārbaude", what: "Pārbaudes pirms iesniegšanas. Tās atrod tieši tās kļūdas, kas iepriekš maksājušas punktus.", phase: 5 },
-	paraksti: { title: "9. Paraksti", what: "Katru dokumentu paraksta noteikta persona. App nolasa, kas tos patiešām parakstījis, un salīdzina.", phase: 5 },
-	rezultats: { title: "10. Rezultāts", what: "Ko iesniedza, kas notika, un ko no tā paņemt nākamajam konkursam.", phase: 5 },
-};
+type View = { kind: "list" } | { kind: "new" } | { kind: "settings" } | { kind: "registers" } | { kind: "project"; id: string; step: StepId | "chat" };
 
 export function App() {
 	const [projects, setProjects] = useState<Project[] | null>(null);
@@ -81,6 +78,7 @@ export function App() {
 		if (view.kind === "new")
 			return <NewProject onCreated={async (p) => (await loadProjects(), setView({ kind: "project", id: p.id, step: "dokumenti" }))} onCancel={() => setView({ kind: "list" })} />;
 		if (view.kind === "settings") return <SettingsScreen />;
+		if (view.kind === "registers") return <Registri />;
 		if (!project) return <div className="screen"><Banner kind="critical">Konkurss nav atrasts.</Banner></div>;
 		if (!bundle) return <div className="screen">{error ? <Banner kind="critical">{error}</Banner> : "Ielādē…"}</div>;
 		if (view.step === "chat")
@@ -90,10 +88,15 @@ export function App() {
 				</div>
 			);
 		if (view.step === "dokumenti") return <Dokumenti project={project} bundle={bundle} reload={reload} onProjectChanged={loadProjects} />;
+		if (view.step === "varam") return <Varam project={project} bundle={bundle} reload={reload} />;
+		if (view.step === "pieradijumi") return <Pieradijumi project={project} bundle={bundle} reload={reload} />;
+		if (view.step === "kas") return <KasKoDara project={project} bundle={bundle} reload={reload} />;
+		if (view.step === "aizpildit") return <Aizpildit project={project} bundle={bundle} reload={reload} />;
 		if (view.step === "versija") return <Versija project={project} bundle={bundle} reload={reload} />;
 		if (view.step === "prasibas") return <Prasibas project={project} bundle={bundle} reload={reload} />;
-		const s = STUBS[view.step];
-		return <Stub {...s} />;
+		if (view.step === "parbaude") return <Parbaude project={project} bundle={bundle} reload={reload} go={(step) => setView({ kind: "project", id: project.id, step })} />;
+		if (view.step === "paraksti") return <Paraksti project={project} bundle={bundle} reload={reload} />;
+		return <Rezultats project={project} bundle={bundle} reload={reload} />;
 	};
 
 	return (
@@ -129,7 +132,7 @@ export function App() {
 						</>
 					) : null}
 					<button className={`rail-item ${view.kind === "list" || view.kind === "new" ? "active" : ""}`} onClick={() => setView({ kind: "list" })}>Konkursi</button>
-					<button className="rail-item" disabled title="Būs 3. posmā">Reģistri</button>
+					<button className={`rail-item ${view.kind === "registers" ? "active" : ""}`} onClick={() => setView({ kind: "registers" })}>Reģistri</button>
 					<button className={`rail-item ${view.kind === "settings" ? "active" : ""}`} onClick={() => setView({ kind: "settings" })}>Iestatījumi</button>
 				</nav>
 				<main className="main">{main()}</main>

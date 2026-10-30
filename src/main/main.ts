@@ -6,6 +6,9 @@ import { AppContext } from "./context.js";
 import { registerCore } from "./ipc/core.js";
 import { registerPhase1 } from "./ipc/phase1.js";
 import { registerPhase2 } from "./ipc/phase2.js";
+import { registerPhase3 } from "./ipc/phase3.js";
+import { registerPhase4 } from "./ipc/phase4.js";
+import { registerPhase5 } from "./ipc/phase5.js";
 
 const here = import.meta.dirname; // dist/main
 const resourcesDir = app.isPackaged ? process.resourcesPath : join(here, "..", "..", "resources");
@@ -27,6 +30,10 @@ const ctx = new AppContext(
 registerCore(ctx);
 registerPhase1(ctx);
 registerPhase2(ctx);
+const toolsScript = app.isPackaged ? join(process.resourcesPath, "python", "konkurss_tools.py") : join(here, "..", "..", "python", "konkurss_tools.py");
+registerPhase3(ctx, toolsScript);
+registerPhase4(ctx, toolsScript);
+registerPhase5(ctx, toolsScript);
 
 function createWindow(): void {
 	win = new BrowserWindow({

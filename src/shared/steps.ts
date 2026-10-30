@@ -29,6 +29,61 @@ export function stepStatus(s: ProjectState, step: StepId): StepStatus {
 			if (conflicts) return "problema";
 			return confirmed === blocks.length ? "gatavs" : "proc";
 		}
+		case "varam": {
+			if (s.requirements.readAt.specialisti === undefined && s.requirements.readAt.vertesana === undefined) return "nav";
+			return s.choices.decision.apply ? "gatavs" : "proc";
+		}
+		case "aizpildit": {
+			const sheets = Object.values(s.fills);
+			if (sheets.length === 0) return "nav";
+			const forms = sheets.filter((sh) => sh.items.some((i) => i.kind === "cell"));
+			const open = forms.some((sh) => sh.items.some((i) => i.kind === "cell" && i.status === "missing"));
+			const written = sheets.every((sh) => Object.keys(sh.outputs).length > 0);
+			return written && !open ? "gatavs" : "proc";
+		}
+		case "pieradijumi": {
+			const chosen = Object.values(s.choices.objects).flat().length;
+			if (chosen === 0) return "nav";
+			if (!s.proofs) return "proc";
+			return s.proofs.missing > 0 ? "problema" : "gatavs";
+		}
+		case "kas": {
+			// V2/V3: the roles tables. V1 is decided by the specialists screen (phase 4).
+			const v = s.variant?.value;
+			if (v !== "V2" && v !== "V3") {
+				const ch = s.choices;
+				const need = s.requirements.specialisti.filter((x) => x.mandatory).length;
+				const chosen = Object.keys(ch.specialists).length;
+				const slotsWithCount = s.requirements.pieredze.length + s.requirements.vertesana.filter((c) => c.objectsNeeded).length;
+				const hasObjects = Object.values(ch.objects).some((o) => o.length > 0);
+				if (need === 0 && slotsWithCount === 0) return "nav";
+				if (chosen === 0 && !hasObjects) return "nav";
+				return chosen >= need && hasObjects ? "gatavs" : "proc";
+			}
+			if (s.roles.design.length === 0) return "nav";
+			const people = (rows: { person: string; company: string }[]) => rows.length > 0 && rows.every((r) => r.person.trim() && r.company.trim());
+			const builders = Object.keys(s.roles.build);
+			return people(s.roles.design) && builders.length > 0 && builders.every((b) => people(s.roles.build[b])) ? "gatavs" : "proc";
+		}
+		case "parbaude": {
+			const run = s.checks as { findings: { id: string; status: string }[] } | undefined;
+			if (!run) return "nav";
+			const ack = (s.checkAck as Record<string, true> | undefined) ?? {};
+			const open = run.findings.filter((f) => !ack[f.id]);
+			if (open.some((f) => f.status === "fail")) return "problema";
+			return open.some((f) => f.status === "warn") ? "proc" : "gatavs";
+		}
+		case "paraksti": {
+			const sum = s.signaturesSummary as { total: number; ok: number; wrong: number } | undefined;
+			if (!sum || sum.total === 0) return "nav";
+			if (sum.wrong > 0) return "problema";
+			return sum.ok >= sum.total ? "gatavs" : "proc";
+		}
+		case "rezultats": {
+			const c = s.closeout as { submittedAt: string | null; result: string | null } | undefined;
+			if (!c || (!c.submittedAt && !c.result)) return "nav";
+			return c.result ? "gatavs" : "proc";
+		}
 		default: {
 			// Later steps report their own status through state[step].status once implemented.
 			const own = (s[step] as { status?: StepStatus } | undefined)?.status;

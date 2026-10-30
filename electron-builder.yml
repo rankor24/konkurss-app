@@ -14,6 +14,8 @@ files:
 extraResources:
   - from: resources/plugin
     to: plugin
+  - from: python
+    to: python
 
 asar: true
 # Native agent binaries are spawned as processes, so they must live outside asar.

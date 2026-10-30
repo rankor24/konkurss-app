@@ -25,11 +25,14 @@ export function timeInQuote(quote: string, hh: number, mm: number): boolean {
 
 /** True when the number appears in the quote, tolerating "10 000", "10000", "65,00" and "65.0". */
 export function numberInQuote(n: number, quote: string): boolean {
-	const q = normalizeForMatch(quote).replace(/(\d)[\s ](?=\d{3}(?!\d))/g, "$1");
+	const raw = normalizeForMatch(quote);
+	// "10 000" is one number, but "200 200 300" in a table row is three: look at the text both ways.
+	const collapsed = raw.replace(/(\d)[\s ](?=\d{3}(?!\d))/g, "$1");
 	const forms = new Set<string>([String(n), n.toFixed(2).replace(".", ","), n.toFixed(2), n.toFixed(1).replace(".", ","), n.toFixed(1)]);
 	for (const f of forms) {
 		const esc = f.replace(/[.,]/g, (c) => `\\${c}`);
-		if (new RegExp(`(?<![\\d.,])${esc}(?![\\d]|[.,]\\d)`).test(q)) return true;
+		const re = new RegExp(`(?<![\\d.,])${esc}(?![\\d]|[.,]\\d)`);
+		if (re.test(raw) || re.test(collapsed)) return true;
 	}
 	return false;
 }

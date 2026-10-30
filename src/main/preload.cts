@@ -3,7 +3,7 @@ import { contextBridge, ipcRenderer } from "electron";
 
 const INVOKE = new Set([
 	"projects:list", "projects:add", "projects:update", "projects:forget", "projects:summaries",
-	"folders:pick", "folders:summary", "folders:open",
+	"folders:pick", "folders:pickFile", "folders:summary", "folders:open",
 	"settings:get", "settings:save", "settings:setClaudeKey",
 	"engines:status", "engines:login",
 	"agent:run", "agent:stop", "audit:tail",
@@ -15,12 +15,12 @@ const INVOKE = new Set([
 	"req:read", "req:confirm", "req:edit", "req:secondPass",
 	"registers:get", "registers:save", "registers:import",
 	"roles:get", "roles:save",
-	"fill:inspect", "fill:bip", "fill:matrica", "fill:builderCopies", "fill:leaks", "fill:valueSheet", "fill:generate", "fill:techProposal", "fill:techDecision",
+	"fill:forms", "fill:vocabulary", "fill:bindForm", "fill:setBinding", "fill:confirmBinding", "fill:notApplicable", "fill:generateForm", "fill:techEdit", "fill:techGenerate", "fill:templates", "fill:codeFill", "fill:setItem", "fill:inspect", "fill:bip", "fill:matrica", "fill:builderCopies", "fill:leaks", "fill:valueSheet", "fill:generate", "fill:techProposal", "fill:techDecision",
 	"feasibility:get", "feasibility:save", "mapping:get", "mapping:save", "finance:get", "finance:save",
 	"proofs:plan", "proofs:collect",
-	"checks:run", "checks:substance",
-	"signatures:get", "signatures:save",
-	"closeout:get", "closeout:save", "closeout:addObject", "clarify:draft",
+	"checks:run", "checks:substance", "checks:ack", "checks:code",
+	"signatures:get", "signatures:save", "signatures:pick", "eis:tick",
+	"closeout:get", "closeout:save", "closeout:addObject", "closeout:postwin", "clarify:draft",
 	"deps:status",
 ]);
 const EVENTS = new Set(["agent:event", "files:progress", "task:text"]);

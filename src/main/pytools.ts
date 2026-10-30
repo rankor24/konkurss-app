@@ -91,9 +91,17 @@ export interface XlsxEdit {
 }
 export const fillXlsx = (cfg: ToolsConfig, spec: { src: string; dst: string; edits: XlsxEdit[] }) => runToolSpec<{ ok: true; dst: string; edits: number }>(cfg, "fill-xlsx", spec);
 
-export interface TermHit {
-	file: string;
-	term: string | null;
-	context: string;
+import type { TermHit } from "../shared/leaks.js";
+export type { TermHit };
+export const grepTerms = (cfg: ToolsConfig, spec: { files: string[]; terms?: string[]; patterns?: string[] }) => runToolSpec<{ ok: true; scanned: number; hits: TermHit[] }>(cfg, "grep-terms", spec);
+
+export interface InspectedSheet {
+	name: string;
+	cells: Record<string, string>;
+	merged: string[];
 }
-export const grepTerms = (cfg: ToolsConfig, spec: { files: string[]; terms: string[] }) => runToolSpec<{ ok: true; scanned: number; hits: TermHit[] }>(cfg, "grep-terms", spec);
+export const inspectXlsx = (cfg: ToolsConfig, path: string) => runTool<{ ok: true; sheets: InspectedSheet[] }>(cfg, "inspect-xlsx", path);
+
+export const readEdoc = (cfg: ToolsConfig, path: string) => runTool<{ ok: true; signers: { name: string; time: string | null; file: string }[]; files: string[] }>(cfg, "read-edoc", path);
+export type DocBlock = { heading: string; level?: number } | { text: string; bold?: boolean } | { table: string[][] };
+export const writeDocx = (cfg: ToolsConfig, spec: { dst: string; blocks: DocBlock[] }) => runToolSpec<{ ok: true; dst: string }>(cfg, "write-docx", spec);

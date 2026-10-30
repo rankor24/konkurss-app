@@ -311,7 +311,8 @@ def norm(s):
 
 
 def grep_terms(spec):
-    terms = [t for t in spec["terms"] if t and len(t.strip()) >= 3]
+    terms = [t for t in spec.get("terms", []) if t and len(t.strip()) >= 3]
+    patterns = [re.compile(p, re.IGNORECASE) for p in spec.get("patterns", [])]
     hits = []
     scanned = 0
     for path in spec["files"]:
@@ -325,6 +326,9 @@ def grep_terms(spec):
             continue
         scanned += 1
         flat = norm(text)
+        for pat in patterns:
+            for m in list(pat.finditer(text))[:10]:
+                hits.append({"file": path, "term": pat.pattern, "context": text[max(0, m.start() - 40): m.end() + 40].replace(chr(10), " ")})
         for term in terms:
             t = norm(term)
             start = 0
@@ -339,6 +343,134 @@ def grep_terms(spec):
     return {"ok": True, "scanned": scanned, "hits": hits}
 
 
+def inspect_xlsx(path):
+    """Every sheet as {ref: value} plus merged ranges — enough to find a matrix layout without guessing."""
+    import openpyxl
+
+    wb = openpyxl.load_workbook(path, data_only=True)
+    sheets = []
+    for ws in wb.worksheets:
+        cells = {}
+        for row in ws.iter_rows():
+            for c in row:
+                if c.value is not None and str(c.value).strip() != "":
+                    cells[c.coordinate] = str(c.value).strip()
+        sheets.append({"name": ws.title, "cells": cells, "merged": [str(r) for r in ws.merged_cells.ranges]})
+    return {"ok": True, "sheets": sheets}
+
+
+def _der(buf, i):
+    """One DER element at i -> (tag, start_of_value, end)."""
+    tag = buf[i]
+    ln = buf[i + 1]
+    j = i + 2
+    if ln & 0x80:
+        n = ln & 0x7F
+        ln = int.from_bytes(buf[j:j + n], "big")
+        j += n
+    return tag, j, j + ln
+
+
+def cert_subject(der):
+    """Subject RDNs of an X.509 certificate as {oid: text}. Stdlib only."""
+    _, v, _ = _der(der, 0)                 # Certificate
+    _, v, _ = _der(der, v)                 # TBSCertificate
+    i = v
+    tag, s, e = _der(der, i)
+    if tag == 0xA0:                        # optional version
+        i = e
+    for _ in range(4):                     # serial, signature alg, issuer, validity
+        _, _, i = _der(der, i)
+    _, s, e = _der(der, i)                 # subject Name
+    out = {}
+    k = s
+    while k < e:
+        _, rs, re_ = _der(der, k)          # RDN (SET)
+        _, as_, ae = _der(der, rs)         # AttributeTypeAndValue (SEQUENCE)
+        _, os_, oe = _der(der, as_)        # OID
+        oid_b = der[os_:oe]
+        parts = [oid_b[0] // 40, oid_b[0] % 40]
+        acc = 0
+        for b in oid_b[1:]:
+            acc = (acc << 7) | (b & 0x7F)
+            if not b & 0x80:
+                parts.append(acc)
+                acc = 0
+        _, vs, ve = _der(der, oe)
+        try:
+            text = der[vs:ve].decode("utf-8")
+        except UnicodeDecodeError:
+            text = der[vs:ve].decode("latin-1")
+        out[".".join(str(p) for p in parts)] = text
+        k = re_
+    return out
+
+
+def read_edoc(path):
+    """eDoc / ASiC-E: who signed and when. Personal codes are never returned."""
+    import base64
+    import zipfile
+    sig_name = re.compile(r"<(?:\w+:)?X509SubjectName>([^<]+)</", re.I)
+    sig_time = re.compile(r"<(?:\w+:)?SigningTime>([^<]+)</", re.I)
+    cn_rx = re.compile(r"CN=([^,<]+)")
+    cert_rx = re.compile(r"<(?:\w+:)?X509Certificate>([^<]+)</", re.I)
+    pnr = re.compile(r"^(PNO[A-Z]{2}-|\d{6}-\d{5})")
+    signers = []
+    inner = []
+    with zipfile.ZipFile(path) as zf:
+        for n in zf.namelist():
+            if "META-INF" in n and "signature" in n.lower():
+                xml = zf.read(n).decode("utf-8", errors="replace")
+                times = list(dict.fromkeys(sig_time.findall(xml)))
+                subjects = list(dict.fromkeys(sig_name.findall(xml)))
+                names = []
+                for s in subjects:
+                    m = cn_rx.search(s)
+                    if m:
+                        names.append(m.group(1).strip())
+                if not names:
+                    for cert in cert_rx.findall(xml)[:1]:
+                        try:
+                            sub = cert_subject(base64.b64decode("".join(cert.split())))
+                        except Exception:
+                            continue
+                        nm = sub.get("2.5.4.3") or " ".join(x for x in (sub.get("2.5.4.42"), sub.get("2.5.4.4")) if x)
+                        if nm:
+                            names.append(nm)
+                names = [x for x in names if not pnr.match(x)]
+                for i, nm in enumerate(names):
+                    signers.append({"name": nm, "time": times[i] if i < len(times) else (times[0] if times else None), "file": n})
+            elif not n.startswith("META-INF") and n != "mimetype":
+                inner.append(n)
+    return {"ok": True, "signers": signers, "files": inner}
+
+
+def write_docx(spec):
+    """A plain, new .docx from paragraphs and tables (clarification drafts, letters)."""
+    from docx import Document
+    dst = spec["dst"]
+    if os.path.exists(dst):
+        fail("fails jau pastāv: " + dst)
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    doc = Document()
+    for b in spec.get("blocks", []):
+        if b.get("table"):
+            rows = b["table"]
+            t = doc.add_table(rows=len(rows), cols=max(len(r) for r in rows))
+            t.style = "Table Grid"
+            for ri, r in enumerate(rows):
+                for ci, v in enumerate(r):
+                    t.cell(ri, ci).text = str(v)
+        elif b.get("heading"):
+            doc.add_heading(b["heading"], level=b.get("level", 2))
+        else:
+            p = doc.add_paragraph()
+            run = p.add_run(b.get("text", ""))
+            run.bold = bool(b.get("bold"))
+    doc.save(dst)
+    return {"ok": True, "dst": dst}
+
+
 def main():
     if len(sys.argv) < 3:
         fail("lietojums: konkurss_tools.py <komanda> <fails>")
@@ -350,6 +482,12 @@ def main():
             out(fill_docx(load_spec(arg)))
         elif cmd == "fill-xlsx":
             out(fill_xlsx(load_spec(arg)))
+        elif cmd == "inspect-xlsx":
+            out(inspect_xlsx(arg))
+        elif cmd == "read-edoc":
+            out(read_edoc(arg))
+        elif cmd == "write-docx":
+            out(write_docx(load_spec(arg)))
         elif cmd == "grep-terms":
             out(grep_terms(load_spec(arg)))
         else:

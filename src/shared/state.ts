@@ -158,6 +158,85 @@ export interface Requirements {
 	readAt: Partial<Record<BlockId, string>>;
 }
 
+/** One line of a roles table (BIP): who does what, for which part. */
+export interface RoleRow {
+	id: string;
+	role: string;
+	part: string;
+	company: string;
+	person: string;
+}
+/** Design side is ours and shared; the construction side belongs to each builder (V2/V3). */
+export interface Roles {
+	design: RoleRow[];
+	build: Record<string, RoleRow[]>;
+}
+
+export type SheetStatus = "source" | "missing" | "na" | "manual";
+export interface SheetItem {
+	slotId: string;
+	kind: "cell" | "section" | "delete";
+	label: string;
+	heading: string;
+	/** where in the template: table cell, or paragraph indexes */
+	t?: number;
+	r?: number;
+	c?: number;
+	paragraphs?: number[];
+	/** the template's own instruction text, shown next to the proposed value */
+	instruction?: string;
+	value: string;
+	status: SheetStatus;
+	cites: Citation[];
+	note?: string;
+	/** how the value was produced: from code (register/roles), from the tender documents (model), or typed */
+	by: "code" | "model" | "manual" | null;
+	/** V1 forms: where the value comes from (see v1/bindings.ts) and who chose it */
+	binding?: string;
+	bindingBy?: "memory" | "model" | "manual";
+	/** the person confirmed a model-proposed binding */
+	bindingOk?: boolean;
+}
+/** The value sheet of one document (D5): every slot, its value, where the value came from. */
+export interface FillSheet {
+	template: string;
+	skeleton: string;
+	items: SheetItem[];
+	inspectedAt: string;
+	filledAt?: string;
+	/** latest written file per builder ("" = the base copy) */
+	outputs: Record<string, string>;
+	/** rows to append per table index, when a roles table needs more rows than the template has */
+	addRows?: Record<string, number>;
+}
+
+/** V1: what the person chose on screens 4 and 5. Ids refer to the registers. */
+export interface Choices {
+	/** required-specialist index → register specialist id */
+	specialists: Record<string, string>;
+	/** experience slot id ("company:0", "bpv:1", "energy:2") → register object ids, in order */
+	objects: Record<string, string[]>;
+	decision: { apply: "yes" | "no" | null; reason: string };
+}
+export const emptyChoices = (): Choices => ({ specialists: {}, objects: {}, decision: { apply: null, reason: "" } });
+
+/** D9: the technical proposal is the previous successful text; only tender-specific paragraphs are proposed for change. */
+export interface TechChange {
+	i: number;
+	before: string;
+	after: string;
+	why: string;
+	cites: Citation[];
+	decision: "accept" | "reject" | null;
+}
+export interface TechState {
+	/** the boilerplate: an earlier submitted technical proposal, as "root:rel" or an absolute path */
+	boilerplate: string;
+	changes: TechChange[];
+	readAt?: string;
+	output?: string;
+}
+
 export interface ProjectState {
 	schema: 1;
 	files: FileEntry[];
@@ -167,6 +246,12 @@ export interface ProjectState {
 	versions: Versions;
 	deadline: Deadline;
 	requirements: Requirements;
+	roles: Roles;
+	choices: Choices;
+	tech?: TechState;
+	proofs?: { collectedAt: string; copied: number; missing: number };
+	/** value sheets by template key ("root:rel") */
+	fills: Record<string, FillSheet>;
 	/** later phases keep their data under their own keys */
 	[extra: string]: unknown;
 }
@@ -180,6 +265,9 @@ export function emptyState(): ProjectState {
 		variant: null,
 		versions: { inForce: null, changes: [], qa: [], templates: [] },
 		deadline: { date: emptyCited(), time: emptyCited(), source: null },
+		roles: { design: [], build: {} },
+		choices: emptyChoices(),
+		fills: {},
 		requirements: {
 			dati: { purchaser: emptyCited(), id: emptyCited(), subject: emptyCited(), contractType: emptyCited() },
 			dokumenti: [],

@@ -1,10 +1,11 @@
 // App-level data in %APPDATA%\KonkursuApp: project list, settings, encrypted Claude key.
 // Kept free of Electron imports so it can be unit-tested with plain Node; the
 // encryption functions are injected (Electron safeStorage in the app).
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, extname, join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { FolderSummary, Project, Settings, Variant } from "../shared/types.js";
+import { emptyRegisters, type Registers } from "./registers/registers.js";
 
 export interface Crypto {
 	available(): boolean;
@@ -97,6 +98,30 @@ export class Store {
 		} catch {
 			return null;
 		}
+	}
+
+	registers(): Registers {
+		return { ...emptyRegisters(), ...this.read<Partial<Registers>>("registers.json", {}) };
+	}
+
+	/** Replaces the registers; the previous file is kept as registers.prev.json. */
+	saveRegisters(r: Registers): void {
+		const f = join(this.dir, "registers.json");
+		if (existsSync(f)) copyFileSync(f, join(this.dir, "registers.prev.json"));
+		this.write("registers.json", r);
+	}
+
+	/** Mapping memory: form layout (skeleton) → "label#n" → binding. Learned from people's corrections. */
+	mappings(): Record<string, Record<string, string>> {
+		return this.read("mappings.json", {});
+	}
+
+	saveMappings(m: Record<string, Record<string, string>>): void {
+		this.write("mappings.json", m);
+	}
+
+	hasRegisters(): boolean {
+		return existsSync(join(this.dir, "registers.json"));
 	}
 
 	runDir(projectId: string): string {

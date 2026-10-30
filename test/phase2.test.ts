@@ -301,3 +301,11 @@ test("classify prompt shows the words that changed in a long table row, not just
 	assert.match(prompt, /aprēķinātajiem vai izmērītajiem/);
 	assert.ok(prompt.length < before.length + after.length, "shorter than the two full rows");
 });
+
+test("numberInQuote: table cells separated by spaces are separate numbers; thousands still work", () => {
+  assert.ok(numberInQuote(200, "| AR | 200 | 200 | 300 | 300 | 400 | 400 | 400 |"));
+  assert.ok(numberInQuote(300, "| AR | 200 | 200 | 300 | 300 |"));
+  assert.equal(numberInQuote(250, "| AR | 200 | 200 | 300 |"), false);
+  assert.ok(numberInQuote(10000, "no 10 000 euro"));
+  assert.equal(numberInQuote(200300, "200 200 300"), false);
+});

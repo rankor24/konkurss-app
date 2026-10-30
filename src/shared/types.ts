@@ -52,4 +52,6 @@ export interface Settings {
 	engineForTasks: EngineId;
 	models: Partial<Record<EngineId, string>>;
 	hasClaudeKey: boolean;
+	/** extra names of other tenders to look for in finished documents */
+	foreignTerms?: string[];
 }
