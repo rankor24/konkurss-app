@@ -5,4 +5,3 @@ resources/plugin/
 *.log
 .build-venv/
 build/
-release-ui/
