@@ -7,8 +7,10 @@ export interface Activity {
 	project: string | null;
 	engine: EngineId;
 	at: string;
-	kind: "start" | "tool" | "progress" | "done" | "error";
+	kind: "start" | "tool" | "answer" | "done" | "error";
 	text: string;
+	/** the full text behind the line: the whole task for "start", everything the agent wrote so far for "answer" */
+	detail?: string;
 }
 
 const TOOLS: Record<string, string> = {
@@ -48,11 +50,13 @@ export function describe(ev: RunEvent): { kind: Activity["kind"]; text: string }
 }
 
 /** Streamed answer text is the model's own formatted output, not something to read; show how much has been written. */
-export const progressText = (chars: number) => `Raksta atbildi… ${chars.toLocaleString("lv-LV")} zīmes`;
+export const progressText = (chars: number) => `Atbilde — ${chars.toLocaleString("lv-LV")} zīmes`;
 
 /** First line of a task's instructions, shortened — what the run is about. */
 export function taskTitle(prompt: string): string {
-	const line = prompt.split("\n").find((l) => l.trim().length > 8) ?? "Uzdevums";
+	const lines = prompt.split("\n").filter((l) => l.trim().length > 8);
+	// the first lines are the fixed preamble given to every task; the title is the first line that is about this task
+	const line = lines.find((l) => !/^Tu esi |NEIZMANTO/i.test(l.trim())) ?? lines[0] ?? "Uzdevums";
 	const t = line.trim();
 	return t.length > 110 ? `${t.slice(0, 107)}…` : t;
 }

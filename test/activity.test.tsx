@@ -26,7 +26,8 @@ test("errors are shown exactly as the provider wrote them", () => {
 });
 
 test("progress and title helpers", () => {
-	assert.match(progressText(3400), /Raksta atbildi… 3.400 zīmes|Raksta atbildi… 3 400 zīmes|3,400|3400/);
+	assert.match(progressText(3400), /^Atbilde — 3.400 zīmes|^Atbilde — 3 400 zīmes|3,400|3400/);
+	assert.equal(taskTitle(["Tu esi BŪVDIZAINS asistents.", "Šis ir uzdevums: NEIZMANTO rīkus.", "Atrodi prasības speciālistiem.", "Vēl"].join("\n")), "Atrodi prasības speciālistiem.", "the fixed preamble is not the title");
 	assert.equal(taskTitle("\n\nDots konkursa nolikums.\nVēl").startsWith("Dots konkursa nolikums"), true);
 	assert.ok(taskTitle("x".repeat(300)).length <= 110);
 });
@@ -49,7 +50,9 @@ test("withActivity reports start, tool, progress (throttled) and done for the ri
 	const passed: string[] = [];
 	const eng = withActivity(fakeEngine(), (a) => seen.push(a), (dir) => (dir === "/run/p1" ? "p1" : null));
 	await eng.run({ prompt: "Atrodi prasības.\nVēl teksts", runDir: "/run/p1", pluginDir: "", mcp: { command: "", args: [], env: {} }, signal: new AbortController().signal, onEvent: (e) => passed.push(e.type) });
-	assert.deepEqual(seen.map((a) => a.kind), ["start", "tool", "progress", "done"], "two quick text chunks give one progress line");
+	assert.deepEqual(seen.map((a) => a.kind), ["start", "tool", "answer", "answer", "done"], "the first chunk shows at once, the rest is flushed when the next event arrives");
+	assert.equal(seen[0].detail, "Atrodi prasības.\nVēl teksts", "the whole task is kept");
+	assert.deepEqual([seen[2].detail, seen[3].detail], ["abc", "abcdefg"], "the answer block grows and ends complete");
 	assert.ok(seen.every((a) => a.project === "p1" && a.engine === "grok" && a.run === seen[0].run));
 	assert.equal(seen[0].text, "Atrodi prasības.");
 	assert.equal(seen[1].text, "Lasa dokumentu: Nolikums.docx");
@@ -59,18 +62,18 @@ test("withActivity reports start, tool, progress (throttled) and done for the ri
 
 test("panel: progress lines of one run replace each other; running until done/error; filtered per project; empty state", async () => {
 	const { ActivityPanel, addActivity, runningNow } = await import("../src/renderer/screens/ActivityPanel.tsx");
-	const a = (kind: Activity["kind"], text: string, run = "r1"): Activity => ({ run, project: "p1", engine: "grok", at: "2026-10-30T13:55:00Z", kind, text });
+	const a = (kind: Activity["kind"], text: string, run = "r1", detail?: string): Activity => ({ run, project: "p1", engine: "grok", at: "2026-10-30T13:55:00Z", kind, text, detail });
 	let list: Activity[] = [];
 	list = addActivity(list, a("start", "Uzdevums"));
-	list = addActivity(list, a("progress", "Raksta atbildi… 10 zīmes"));
-	list = addActivity(list, a("progress", "Raksta atbildi… 90 zīmes"));
+	list = addActivity(list, a("answer", "Atbilde — 10 zīmes", "r1", "abc"));
+	list = addActivity(list, a("answer", "Atbilde — 90 zīmes", "r1", "abcdef"));
 	assert.equal(list.length, 2);
-	assert.equal(list[0].text, "Raksta atbildi… 90 zīmes");
+	assert.equal(list[0].detail, "abcdef");
 	assert.equal(runningNow(list), true);
 	list = addActivity(list, a("done", "Pabeigts"));
 	assert.equal(runningNow(list), false);
 	assert.equal(runningNow([]), false);
-	assert.equal(addActivity(Array.from({ length: 80 }, () => a("tool", "x")), a("tool", "y")).length, 80, "list is capped");
+	assert.equal(addActivity(Array.from({ length: 200 }, () => a("tool", "x")), a("tool", "y")).length, 200, "list is capped");
 
 	const html = renderToStaticMarkup(h(ActivityPanel, { projectId: "p1" }));
 	assert.match(html, /Ko dara aģents/);

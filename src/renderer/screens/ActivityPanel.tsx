@@ -2,13 +2,13 @@ import { useEffect, useState } from "react";
 import type { Activity } from "../../shared/activity";
 import { onActivity } from "../api";
 
-const ICON = { start: "▶", tool: "·", progress: "…", done: "✓", error: "✗" } as const;
-const MAX = 80;
+const ICON = { start: "▶", tool: "·", answer: "✎", done: "✓", error: "✗" } as const;
+const MAX = 200;
 
-/** Keeps the newest lines; a progress line of a run replaces that run's previous progress line instead of piling up. */
+/** Keeps the newest lines; the growing answer of a run replaces that run's previous answer line instead of piling up. */
 export function addActivity(list: Activity[], a: Activity): Activity[] {
 	const prev = list[0];
-	const next = a.kind === "progress" && prev && prev.run === a.run && prev.kind === "progress" ? [a, ...list.slice(1)] : [a, ...list];
+	const next = a.kind === "answer" && prev && prev.run === a.run && prev.kind === "answer" ? [a, ...list.slice(1)] : [a, ...list];
 	return next.slice(0, MAX);
 }
 
@@ -18,7 +18,7 @@ export function runningNow(list: Activity[]): boolean {
 	return !!latest && latest.kind !== "done" && latest.kind !== "error";
 }
 
-/** What the agent is doing right now, in plain words: which file it reads, how much it has written, when it finished or failed. */
+/** The agent's whole run in order, newest on top: the task, every file it touches, everything it writes, and how it ended. */
 export function ActivityPanel({ projectId }: { projectId: string | null }) {
 	const [all, setAll] = useState<Activity[]>([]);
 	const [open, setOpen] = useState(true);
@@ -48,7 +48,14 @@ export function ActivityPanel({ projectId }: { projectId: string | null }) {
 					<div key={`${a.run}-${a.at}-${i}`} className={`activity-row ${a.kind}`}>
 						<span className="t">{new Date(a.at).toLocaleTimeString("lv-LV", { hour: "2-digit", minute: "2-digit" })}</span>
 						<span>{ICON[a.kind]}</span>
-						<span className="msg">{a.text}</span>
+						{a.detail ? (
+							<details open={a.kind === "answer"}>
+								<summary className="msg">{a.text}</summary>
+								<pre className="act-pre">{a.detail}</pre>
+							</details>
+						) : (
+							<span className="msg">{a.text}</span>
+						)}
 					</div>
 				))}
 			</div>

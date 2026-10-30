@@ -105,7 +105,7 @@ td { padding: 0 8px; height: 28px; border-bottom: 1px solid var(--line); vertica
 tr.sel td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 tr.click { cursor: pointer; }
 td.path-cell { font-family: var(--mono); max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.table-wrap { max-height: 52vh; overflow: auto; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); }
 
 /* quote mark: how a non-expert tells "the app read this" from "a person typed this" */
 .cite { color: var(--model); background: var(--model-bg); border: 1px solid var(--model); border-radius: 3px; padding: 0 4px; margin-left: 6px; font-size: 11px; cursor: pointer; }
@@ -126,8 +126,9 @@ td.path-cell { font-family: var(--mono); max-width: 420px; overflow: hidden; tex
 .line.tool, .line.result { font-family: var(--mono); font-size: 11px; color: var(--ink-2); }
 .line.error { color: var(--critical); font-family: var(--mono); font-size: 12px; }
 .line.done { color: var(--good); }
-.split { display: grid; grid-template-columns: 1fr 340px; gap: 12px; align-items: start; }
-.preview { max-height: 52vh; overflow: auto; font-family: var(--mono); font-size: 11px; white-space: pre-wrap; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 12px; align-items: start; }
+@media (max-width: 1700px) { .split { grid-template-columns: minmax(0, 1fr); } .preview { position: static; max-height: 40vh; } }
+.preview { position: sticky; top: 8px; max-height: calc(100vh - 110px); overflow: auto; font-family: var(--mono); font-size: 11px; white-space: pre-wrap; padding: 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); }
 mark { background: color-mix(in srgb, var(--warning) 40%, transparent); color: inherit; }
 .progress { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
 .progress > span { display: block; height: 100%; background: var(--accent); }
@@ -149,3 +150,10 @@ mark { background: color-mix(in srgb, var(--warning) 40%, transparent); color: i
 .activity .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--good); animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .25; } }
 @media (max-width: 1500px) { .activity:not(.closed) { width: 280px; } }
+
+/* one calm scrollbar style everywhere, matching the theme; native widgets follow the theme too */
+:root { color-scheme: light dark; }
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink-2) 45%, transparent) transparent; }
+.activity-row.answer .act-pre, .activity-row.start .act-pre { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--mono); font-size: 11px; margin: 4px 0 0; color: var(--ink-2); }
+.activity-row details summary { cursor: pointer; }
+.activity-row { grid-template-columns: 40px 14px minmax(0, 1fr); }
