@@ -85,7 +85,7 @@ export function App() {
 		if (view.step === "chat")
 			return (
 				<div className="screen">
-					<Chat project={project} />
+					<Chat project={project} onChanged={reload} />
 				</div>
 			);
 		if (view.step === "dokumenti") return <Dokumenti project={project} bundle={bundle} reload={reload} onProjectChanged={loadProjects} />;
@@ -127,7 +127,7 @@ export function App() {
 								</button>
 							))}
 							<button className={`rail-item ${view.kind === "project" && view.step === "chat" ? "active" : ""}`} onClick={() => setView({ kind: "project", id: project.id, step: "chat" })}>
-								<span className="st">?</span><span className="n" />Jautāt aģentam
+								<span className="st">?</span><span className="n" />Aģents
 							</button>
 							<div className="rail-sep" />
 						</>

@@ -47,7 +47,7 @@ function Row({ item, onSave }: { item: SheetItem; onSave: (value: string | null)
 					</div>
 				) : (
 					<div>
-						{item.value ? <div style={{ whiteSpace: "pre-wrap" }}>{item.value}</div> : <span className="missing">{item.kind === "section" ? "pamācība paliek — nav teksta" : "nav atrasts — jāaizpilda pašai"}</span>}
+						{item.value ? <div style={{ whiteSpace: "pre-wrap" }}>{item.value}</div> : <span className="missing">{item.kind === "section" ? "vēl nav aizpildīts — pamācība paliek" : "nav atrasts — jāaizpilda pašai"}</span>}
 						{item.cites.map((c, i) => <div key={i} className="quote-pop"><div className="hint">{c.file}</div>“{c.quote}”</div>)}
 						{item.note && <div className="hint">{item.note}</div>}
 						{item.kind !== "delete" && <button className="link" onClick={() => { setV(item.value); setEditing(true); }}>labot</button>}

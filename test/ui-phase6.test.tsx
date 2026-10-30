@@ -14,3 +14,13 @@ test("Iestatījumi shows the agents, the 'Vai dators ir gatavs' card and the act
 	assert.match(html, /Darbību žurnāls/);
 	assert.match(html, /neko nevar izdzēst no šejienes/);
 });
+
+test("Aģents screen says it fills fields (not only answers), with the safety rules and clickable examples", async () => {
+	const { Chat } = await import("../src/renderer/screens/Chat.tsx");
+	const html = renderToStaticMarkup(h(Chat, { project: { id: "p", name: "N", sourceDir: "S", outputDir: "O", variant: null, builders: [], createdAt: "" } }));
+	assert.match(html, /<h2>Aģents<\/h2>/);
+	assert.match(html, /<b>aizpilda<\/b>/);
+	assert.match(html, /Ieraksta tikai to, ko var citēt/);
+	assert.match(html, /ko tu pats esi ierakstījis, to neaizstāj/);
+	assert.match(html, /aizpildi tukšās BIP sadaļas/);
+});

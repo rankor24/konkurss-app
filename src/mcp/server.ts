@@ -14,6 +14,7 @@ import { basename, delimiter, dirname, extname, join, relative } from "node:path
 import { checkRead, checkWrite, type GuardConfig } from "./guard.js";
 import { audit } from "./audit.js";
 import { pyConfigFromEnv, readerFor, runPython } from "./python.js";
+import * as edit from "./edit.js";
 
 const env = process.env;
 const guard: GuardConfig = {
@@ -168,6 +169,72 @@ server.registerTool(
 		audit(auditFile, { tool: "write_text", path: g.path, ok: true, engine, reason: backup ? `backup ${backup}` : undefined });
 		return ok(`Saglabāts: ${g.path}${backup ? `\nIepriekšējā versija: ${backup}` : ""}`);
 	},
+);
+
+// ---- editing the tender's own data (see edit.ts for the rules) ----
+const project = edit.projectFor(guard.readDirs[0] ?? "", guard.writeDir);
+const reply = (tool: string, r: edit.Result, path?: string): ToolText => {
+	audit(auditFile, { tool, path, ok: r.ok, reason: r.ok ? undefined : r.reason, engine });
+	return r.ok ? ok(r.text) : fail(r.reason);
+};
+
+server.registerTool(
+	"project_overview",
+	{ title: "Konkursa pārskats", description: "Where the tender stands: variant, deadline, status of the ten steps, and the forms (value sheets) with their number of open fields. Call this first when asked to fill something." },
+	async () => reply("project_overview", edit.overview(project)),
+);
+
+server.registerTool(
+	"list_open_fields",
+	{
+		title: "Atvērtie lauki",
+		description: "Fields of the forms that are still empty and may be filled (slot id, kind, heading, template's own instruction). Omit template to list all forms.",
+		inputSchema: { template: z.string().optional().describe("Template key from project_overview, e.g. source:4.pielikums_Pirms_liguma_BIP.docx") },
+	},
+	async ({ template }) => reply("list_open_fields", edit.listOpenFields(project, template), template),
+);
+
+server.registerTool(
+	"set_field",
+	{
+		title: "Aizpildīt lauku",
+		description:
+			"Fill ONE open field of a form with a value found in the tender documents. Requires a verbatim quote (10–300 chars) from a tender document, checked by the app; a wrong quote is refused. Never overwrites what a person typed. Only write true information from the documents — if the documents do not say it, leave the field empty and tell the user.",
+		inputSchema: {
+			template: z.string().describe("Template key from project_overview"),
+			slot_id: z.string().describe("Field id from list_open_fields"),
+			value: z.string().describe("The text to put in the field, in Latvian"),
+			quote: z.string().describe("Verbatim quote from a tender document that supports the value"),
+			file: z.string().optional().describe("File name of the document the quote is from"),
+		},
+	},
+	async ({ template, slot_id, value, quote, file }) => reply("set_field", edit.setField(project, { template, slotId: slot_id, value, quote, file }), slot_id),
+);
+
+server.registerTool(
+	"set_deadline",
+	{
+		title: "Iesniegšanas termiņš",
+		description: "Set the submission deadline (step 2) with a verbatim quote from a tender document that contains the date.",
+		inputSchema: { date: z.string().describe("DD.MM.YYYY"), time: z.string().optional().describe("HH:MM"), quote: z.string(), file: z.string().optional() },
+	},
+	async ({ date, time, quote, file }) => reply("set_deadline", edit.setDeadline(project, { date, time, quote, file })),
+);
+
+server.registerTool(
+	"set_role",
+	{
+		title: "Loma",
+		description: "Add or update one row of 5. Kas ko dara: who does which role. Use only what the user told you or a tender document states — never guess people.",
+		inputSchema: {
+			side: z.string().describe("'design' for our design side, or the name of the builder"),
+			role: z.string(),
+			part: z.string().optional().describe("Model/part codes, e.g. AR, IN"),
+			company: z.string().optional(),
+			person: z.string().optional(),
+		},
+	},
+	async ({ side, role, part, company, person }) => reply("set_role", edit.setRole(project, { side, role, part, company, person })),
 );
 
 await server.connect(new StdioServerTransport());

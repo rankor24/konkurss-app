@@ -51,9 +51,9 @@ after(async () => {
 	rmSync(tmp, { recursive: true, force: true });
 });
 
-test("exposes exactly the four konkurss tools", async () => {
+test("exposes exactly the nine konkurss tools (four file tools, five for editing the tender)", async () => {
 	const { tools } = await client.listTools();
-	assert.deepEqual(tools.map((t) => t.name).sort(), ["get_skill", "list_files", "read_doc", "write_text"]);
+	assert.deepEqual(tools.map((t) => t.name).sort(), ["get_skill", "list_files", "list_open_fields", "project_overview", "read_doc", "set_deadline", "set_field", "set_role", "write_text"]);
 });
 
 test("list_files covers source and output", async () => {

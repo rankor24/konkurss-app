@@ -29,5 +29,5 @@ export interface Engine {
 }
 
 /** Only these tools may run. Everything that touches files goes through konkurss-tools. */
-export const KONKURSS_TOOLS = ["list_files", "read_doc", "get_skill", "write_text"] as const;
+export const KONKURSS_TOOLS = ["list_files", "read_doc", "get_skill", "write_text", "project_overview", "list_open_fields", "set_field", "set_deadline", "set_role"] as const;
 export const MCP_SERVER_NAME = "konkurss";

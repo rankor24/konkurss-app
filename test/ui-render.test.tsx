@@ -81,7 +81,7 @@ test("the rail lists all ten steps in order with their status icons", async () =
 	assert.deepEqual(STEPS.map((s) => s.n), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 	const src = readFileSync(join(import.meta.dirname, "..", "src", "renderer", "App.tsx"), "utf8");
 	assert.match(src, /STEPS\.map/);
-	assert.match(src, /Jautāt aģentam/);
+	assert.match(src, /Aģents/);
 	assert.match(src, /Nekas netiek dzēsts, oriģināli netiek mainīti/, "status bar repeats the safety guarantee");
 });
 

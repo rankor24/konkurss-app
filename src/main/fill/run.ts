@@ -8,13 +8,13 @@ import type { Engine, RunOptions } from "../engines/types.js";
 import { loadState, updateState } from "../project-state.js";
 import { fillDocx, fillXlsx, inspectDocx, inspectXlsx, type ToolsConfig } from "../pytools.js";
 import type { Registers } from "../registers/registers.js";
-import { docsByKind } from "../tasks/docs.js";
+import { docsByKind, excerpt } from "../tasks/docs.js";
 import { runModelTask } from "../tasks/runner.js";
 import { inForceNolikums } from "../tasks/phase2-run.js";
 import { checkDocument, foreignTerms, otherBuilderTerms, type LeakReport } from "./leaks.js";
 import { groundLod, LOD_HINT, LOD_INSTRUCTIONS, lodSchema, matrixLayout, planAuthors, planLods, type LodProposal } from "./matrica.js";
 import { codeFill, LEGEND, mergeSheets, newSheet, openItems, toEdits } from "./sheet.js";
-import { applyCells, applySections, CELLS_HINT, CELLS_INSTRUCTIONS, cellsPrompt, cellsSchema, chunk, SECTIONS_HINT, SECTIONS_INSTRUCTIONS, sectionsPrompt, sectionsSchema } from "./tasks.js";
+import { applyCells, applySections, CELLS_HINT, CELLS_INSTRUCTIONS, cellsPrompt, cellsSchema, chunk, FOCUSED_INSTRUCTIONS, focusedDocs, SECTIONS_HINT, SECTIONS_INSTRUCTIONS, sectionsPrompt, sectionsSchema } from "./tasks.js";
 
 type Base = Omit<RunOptions, "prompt" | "onEvent">;
 export type Outcome<X = object> = ({ ok: true } & X) | { ok: false; error: string };
@@ -137,6 +137,21 @@ SADAĻAS:
 ${sectionsPrompt(batch)}`, schemaHint: SECTIONS_HINT, schema: sectionsSchema, docs: secDocs });
 		if (!r.ok) return fail(r.error, `Atlikušās sadaļas (${batches.length - n} no ${batches.length} grupām) var aizpildīt vēlreiz — jau aizpildītās netiks pārrakstītas.`);
 		const a = applySections(batch, r.data, secDocs);
+		rejected += a.rejected;
+		commit(a.items);
+	}
+
+	// Second pass: what is still empty gets only the passages about its own topic. A million characters of documents make a
+	// model answer "nothing found"; a few thousand about "Garantijas laiks" make it find the clause.
+	const still = loadState(d.project.outputDir).fills[key].items.filter((i) => i.kind === "section" && i.status === "missing" && i.by === null);
+	const retry = chunk(still, 5);
+	for (const [n, batch] of retry.entries()) {
+		onProgress?.(`Atkārtota meklēšana ${n + 1}/${retry.length} (${batch.length} sadaļas)…`);
+		const docs = focusedDocs(batch, secDocs, (doc, re) => excerpt(doc, re, { head: 0, ctx: 10, maxChars: 20_000 }));
+		if (docs.length === 0) continue;
+		const r = await runModelTask({ engine, base, instructions: `${FOCUSED_INSTRUCTIONS}\n\nSADAĻAS:\n${sectionsPrompt(batch)}`, schemaHint: SECTIONS_HINT, schema: sectionsSchema, docs });
+		if (!r.ok) return fail(r.error, "Atkārtotā meklēšana nav pabeigta — spied „Aizpildīt no nolikuma” vēlreiz, jau aizpildītais netiks pārrakstīts.");
+		const a = applySections(batch, r.data, docs);
 		rejected += a.rejected;
 		commit(a.items);
 	}

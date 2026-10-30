@@ -102,7 +102,7 @@ test("pipeline: inspect → code fill → model fill (grounded) → versioned fi
 	const rejected = sections.filter((i) => i.status === "missing" && /citāts dokumentos netika atrasts/.test(i.note ?? ""));
 	console.log(`  ${sections.length} sections: ${ok.length} grounded, ${rejected.length} rejected (made-up source)`);
 	assert.ok(ok.length > 20 && rejected.length > 10);
-	assert.equal(filled.rejected, rejected.length);
+	assert.ok(filled.rejected >= rejected.length, "a section rejected in the first pass is asked again in the focused pass, so it can be rejected twice");
 	assert.ok(ok.every((i) => i.cites.length > 0 && /^Papildināt: izmantotā VDV platforma/.test(i.note ?? "")));
 
 	// base copy, then a second one: new version number, the first stays

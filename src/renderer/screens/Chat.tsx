@@ -20,7 +20,14 @@ function toLine(ev: RunEvent): Line {
 }
 
 /** Free-form question to the agent about this tender. Every answer should cite or say „dokumentos nav”. */
-export function Chat({ project }: { project: Project }) {
+const EXAMPLES = [
+	"Pārskati, kas vēl nav aizpildīts, un aizpildi tukšās BIP sadaļas ar to, kas rakstīts BIM prasībās (PIP). Katram ierakstam citāts.",
+	"Atrodi iesniegšanas termiņu nolikumā un ieraksti to.",
+	"Pārskati visas veidlapas un pasaki, kuri lauki palikuši tukši un kāpēc.",
+];
+
+/** The agent for this tender: answers questions AND fills fields of the forms, deadline and roles — only with true information it can quote. */
+export function Chat({ project, onChanged }: { project: Project; onChanged?: () => Promise<void> | void }) {
 	const [statuses, setStatuses] = useState<EngineStatus[]>([]);
 	const [engine, setEngine] = useState<EngineId>("claude");
 	const [text, setText] = useState("");
@@ -64,12 +71,15 @@ export function Chat({ project }: { project: Project }) {
 		} finally {
 			runRef.current = null;
 			setRunId(null);
+			// the agent may have written into the forms: show the new state on every screen
+			await onChanged?.();
 		}
 	};
 
 	return (
 		<div className="card">
-			<h2>Jautāt aģentam</h2>
+			<h2>Aģents</h2>
+			<div className="small">Aģents ne tikai atbild, bet arī <b>aizpilda</b>: veidlapu laukus (BIP u.c.), termiņu un lomas. Ieraksta tikai to, ko var citēt no konkursa dokumentiem; ko tu pats esi ierakstījis, to neaizstāj. Word/Excel failus izveido tu ar pogu 6. solī.</div>
 			<div className="row">
 				<select value={engine} onChange={(e) => setEngine(e.target.value as EngineId)} aria-label="Aģents">
 					{(Object.keys(ENGINE_LABELS) as EngineId[]).map((id) => (
@@ -79,12 +89,17 @@ export function Chat({ project }: { project: Project }) {
 				{!ready && <span className="small" style={{ color: "var(--warning)" }}>{statuses.find((s) => s.id === engine)?.reason}</span>}
 			</div>
 			<div className="log" ref={logRef}>
-				{log.length === 0 && <div className="muted small">Jautā par šo konkursu. Atbildei jābūt ar citātu no dokumenta vai „dokumentos nav”.</div>}
+				{log.length === 0 && (
+					<div className="muted small">
+						<div>Pasaki, ko darīt, vai jautā. Piemēri (spied, lai ievietotu):</div>
+						{EXAMPLES.map((x) => <div key={x}><button className="link" onClick={() => setText(x)}>{x}</button></div>)}
+					</div>
+				)}
 				{log.map((l, i) => <div key={i} className={`line ${l.kind}`}>{l.text}</div>)}
 				{runId && <div className="line tool">… strādā</div>}
 			</div>
 			<div className="row">
-				<textarea className="grow" rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder="Piem.: kur rakstīts, kāds LOD jāiesniedz KC posmā?" />
+				<textarea className="grow" rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder="Ko darīt? Piem.: aizpildi sadaļu „Garantijas laiks” no PIP / kur rakstīts, kāds LOD jāiesniedz KC posmā?" />
 				{runId ? <button onClick={() => api.agent.stop(runId)}>Apturēt</button> : <button className="primary" disabled={!ready} onClick={() => send(text)}>Sūtīt</button>}
 			</div>
 		</div>
