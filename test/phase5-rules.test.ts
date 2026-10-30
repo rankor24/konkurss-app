@@ -59,7 +59,7 @@ test("NVA fixture: coordinator mismatch (B12), LOD without author (B13), non-BIM
 	const sw = find(fs, "software");
 	assert.equal(sw.status, "warn");
 	assert.match(sw.detail, /Civil 3D/i);
-	assert.match(sw.detail, /PIP 6\.5\.1/);
+	assert.match(sw.detail, /apliecinošu dokumentu/);
 
 	// failures sort first
 	assert.equal(fs[0].status, "fail");

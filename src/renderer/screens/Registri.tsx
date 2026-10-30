@@ -176,7 +176,7 @@ export function Registri() {
 					) : <div className="card muted">Nav objektu.</div>}
 				</div>
 			)}
-			{hasData && <div className="hint">Importēšana no skill pārrakstītu visus šos datus, tāpēc tā ir pieejama tikai tukšiem reģistriem. Iepriekšējā versija saglabājas kā registers.prev.json.</div>}
+			{hasData && <div className="hint">Importēšana no skill pārrakstītu visus šos datus, tāpēc tā ir pieejama tikai tukšiem reģistriem. Iepriekšējā versija saglabājas rezerves kopijā.</div>}
 		</div>
 	);
 }

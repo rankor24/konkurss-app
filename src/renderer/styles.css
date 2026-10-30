@@ -91,7 +91,7 @@ code, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .spread { justify-content: space-between; }
 .grow { flex: 1; min-width: 0; }
-.banner { border: 1px solid var(--warning); background: var(--warning-bg); color: var(--ink); border-radius: 4px; padding: 6px 10px; display: flex; gap: 8px; align-items: flex-start; }
+.banner { white-space: pre-line; border: 1px solid var(--warning); background: var(--warning-bg); color: var(--ink); border-radius: 4px; padding: 6px 10px; display: flex; gap: 8px; align-items: flex-start; }
 .banner.critical { border-color: var(--critical); }
 .banner .ic { color: var(--warning); }
 .banner.critical .ic { color: var(--critical); }

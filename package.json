@@ -14,8 +14,9 @@
 		"typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
 		"test": "node --import tsx --test --test-concurrency=1 test/*.test.ts test/*.test.tsx",
 		"start": "npm run build && electron .",
-		"pack": "npm run build && electron-builder --win dir",
-		"dist": "npm run build && electron-builder --win nsis"
+		"pack": "npm run build:tools && npm run build && electron-builder --win dir",
+		"dist": "npm run build:tools && npm run build && electron-builder --win nsis",
+		"build:tools": "node scripts/build-tools.mjs"
 	},
 	"dependencies": {
 		"@anthropic-ai/claude-agent-sdk": "^0.3.314",

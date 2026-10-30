@@ -15,7 +15,7 @@ export function extractJson(text: string): unknown {
 	const body = fence ? fence[1] : text;
 	const start = body.indexOf("{");
 	const end = body.lastIndexOf("}");
-	if (start < 0 || end <= start) throw new Error("Atbildē nav JSON objekta.");
+	if (start < 0 || end <= start) throw new Error("Atbildē nav strukturēta rezultāta.");
 	return JSON.parse(body.slice(start, end + 1));
 }
 
@@ -82,5 +82,5 @@ export async function runModelTask<S extends z.ZodTypeAny>(p: {
 		}
 		prompt = `${prompt}\n\nIEPRIEKŠĒJĀ ATBILDE NEDERĒJA (${lastProblem}). Atbildi vēlreiz — tikai derīgs JSON pēc dotās formas.`;
 	}
-	return { ok: false, error: `Aģenta atbilde nebija derīga divas reizes pēc kārtas: ${lastProblem}`, engine: p.engine.id };
+	return { ok: false, error: `Aģenta atbilde nebija lasāma divas reizes pēc kārtas. Mēģini vēlreiz vai izvēlies citu aģentu Iestatījumos. (Tehniskā informācija: ${lastProblem})`, engine: p.engine.id };
 }

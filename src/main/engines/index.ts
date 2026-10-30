@@ -19,6 +19,7 @@ export function mcpLaunch(p: {
 	auditFile: string;
 	engine: EngineId;
 	python?: string;
+	toolsExe?: string;
 }): McpLaunch {
 	const env: Record<string, string> = {
 		ELECTRON_RUN_AS_NODE: "1",
@@ -29,6 +30,7 @@ export function mcpLaunch(p: {
 		KONKURSS_ENGINE: p.engine,
 	};
 	if (p.python) env.KONKURSS_PY = p.python;
+	if (p.toolsExe) env.KONKURSS_TOOLS_EXE = p.toolsExe;
 	return { command: process.execPath, args: [p.serverJs], env };
 }
 

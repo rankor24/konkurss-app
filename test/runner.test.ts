@@ -42,7 +42,7 @@ const run = (engine: Engine) =>
 test("extractJson handles code fences and chatter around the object", () => {
 	assert.deepEqual(extractJson('Lūk:\n```json\n{"a":1}\n```\nPaldies'), { a: 1 });
 	assert.deepEqual(extractJson('Atbilde {"a":{"b":2}} beigas'), { a: { b: 2 } });
-	assert.throws(() => extractJson("nav json"), /JSON/);
+	assert.throws(() => extractJson("nav json"), /strukturēta/);
 });
 
 test("valid reply → ok, grounded variant carries the quote", async () => {

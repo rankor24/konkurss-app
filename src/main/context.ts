@@ -53,6 +53,7 @@ export class AppContext {
 				auditFile: join(project.outputDir, ".konkurss", "audit.jsonl"),
 				engine,
 				python: process.env.KONKURSS_PY,
+				toolsExe: process.env.KONKURSS_TOOLS_EXE,
 			}),
 			model: this.store.settings().models[engine],
 			signal,

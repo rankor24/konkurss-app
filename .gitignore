@@ -3,3 +3,5 @@ dist/
 release/
 resources/plugin/
 *.log
+.build-venv/
+build/

@@ -21,7 +21,7 @@ const INVOKE = new Set([
 	"checks:run", "checks:substance", "checks:ack", "checks:code",
 	"signatures:get", "signatures:save", "signatures:pick", "eis:tick",
 	"closeout:get", "closeout:save", "closeout:addObject", "closeout:postwin", "clarify:draft",
-	"deps:status",
+	"deps:status", "grok:update",
 ]);
 const EVENTS = new Set(["agent:event", "files:progress", "task:text"]);
 

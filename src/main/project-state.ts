@@ -23,7 +23,7 @@ export function loadState(outputDir: string): ProjectState {
 			requirements: { ...base.requirements, ...loaded.requirements },
 		} as ProjectState;
 	} catch {
-		throw new Error(`Konkursa stāvokļa fails ir bojāts: ${f}. Iepriekšējā versija: project.prev.json`);
+		throw new Error(`Konkursa stāvokļa fails ir bojāts: ${f}. Rezerves kopija ir tajā pašā mapē — faila nosaukumā ir „prev”.`);
 	}
 }
 

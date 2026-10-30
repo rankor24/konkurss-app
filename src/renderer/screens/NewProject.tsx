@@ -96,7 +96,7 @@ export function NewProject({ onCreated, onCancel }: { onCreated: (p: Project) =>
 				{(variant === "V2" || variant === "V3") && (
 					<label className="field">
 						Būvnieki (ar komatu), kuriem gatavojam
-						<input value={builders} onChange={(e) => setBuilders(e.target.value)} placeholder="piem. UPB, Pillar" />
+						<input value={builders} onChange={(e) => setBuilders(e.target.value)} placeholder="piem. Būvnieks A, Būvnieks B" />
 					</label>
 				)}
 			</div>

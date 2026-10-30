@@ -2,6 +2,7 @@
 import type { BlockId, Choices, Cited, DocKind, FillSheet, ProjectState, QaItem, Roles, StepId, StepStatus, Variant } from "../shared/state";
 import type { Expiry, Registers } from "../shared/registers";
 import type { LeakReport } from "../shared/leaks";
+import type { DepItem } from "../shared/deps";
 import type { CheckRun, Closeout, Finding, SignatureRow, SignatureVerdict } from "../shared/checks";
 import type { EngineId, EngineStatus, FolderSummary, Project, RunEvent, Settings } from "../shared/types";
 
@@ -155,6 +156,10 @@ export const api = {
 		addObject: (id: string) => call<TaskOutcome<{ object: { id: string; name: string } }>>("closeout:addObject", id),
 		postWin: (id: string) => call<TaskOutcome<{ added: number; rejected: number }>>("closeout:postwin", id),
 		clarify: (id: string, request: string, secret: boolean) => call<TaskOutcome<{ result: { file: string; answered: number; unsupported: { question: string; why: string }[] } }>>("clarify:draft", id, request, secret),
+	},
+	deps: {
+		status: () => call<DepItem[]>("deps:status"),
+		updateGrok: () => call<{ ok: boolean; out: string }>("grok:update"),
 	},
 	audit: { tail: (projectId: string, lines?: number) => call<{ at: string; tool: string; path?: string; ok: boolean; reason?: string; engine?: string }[]>("audit:tail", projectId, lines) },
 };

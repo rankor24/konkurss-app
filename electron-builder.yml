@@ -16,6 +16,9 @@ extraResources:
     to: plugin
   - from: python
     to: python
+  # Frozen document tools (PyInstaller one-folder build): no Python needed on the colleague's PC.
+  - from: build/tools
+    to: tools
 
 asar: true
 # Native agent binaries are spawned as processes, so they must live outside asar.

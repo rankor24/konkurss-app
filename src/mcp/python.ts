@@ -1,6 +1,7 @@
 // Runs the skills' own Python extract scripts. Dev: `py -3.14 <script>`.
-// Packaged builds will point KONKURSS_PY at a frozen konkurss-tools.exe (phase 6).
+// Packaged builds set KONKURSS_TOOLS_EXE to the frozen konkurss-tools.exe, which runs the same scripts without Python.
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { extname, join } from "node:path";
 
 export interface PyConfig {
@@ -12,6 +13,8 @@ export interface PyConfig {
 }
 
 export function pyConfigFromEnv(env: NodeJS.ProcessEnv): PyConfig {
+	// the packaged app carries the document tools as one exe; its "run-script" command runs a skill script with the libraries it needs
+	if (env.KONKURSS_TOOLS_EXE && existsSync(env.KONKURSS_TOOLS_EXE)) return { command: env.KONKURSS_TOOLS_EXE, args: ["run-script"], skillsDir: env.KONKURSS_SKILLS_DIR ?? "" };
 	const raw = env.KONKURSS_PY ?? (process.platform === "win32" ? "py -3.14" : "python3");
 	const [command, ...args] = raw.split(" ").filter(Boolean);
 	return { command, args, skillsDir: env.KONKURSS_SKILLS_DIR ?? "" };

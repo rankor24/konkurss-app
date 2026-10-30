@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { ENGINE_LABELS, type EngineId, type Settings } from "../../shared/types";
 import { api } from "../api";
 import { ScreenHead } from "../ui";
+import { AuditLog } from "./AuditLog";
+import { DepsPanel } from "./Deps";
 import { EnginesPanel } from "./Engines";
 
 export function SettingsScreen() {
@@ -11,6 +13,7 @@ export function SettingsScreen() {
 		<div className="screen">
 			<ScreenHead title="Iestatījumi" what="Šeit pieslēdz aģentus, ar kuriem app lasa dokumentus, un izvēlies, kuru lietot." why="Ja aģents nav pieejams, app parāda kļūdu un uz citu aģentu automātiski nepārslēdzas — tev jāizvēlas pašai." />
 			<EnginesPanel />
+			<DepsPanel />
 			<div className="card">
 				<h2>Noklusējuma aģents dokumentu lasīšanai</h2>
 				<select
@@ -21,6 +24,7 @@ export function SettingsScreen() {
 					{(Object.keys(ENGINE_LABELS) as EngineId[]).map((id) => <option key={id} value={id}>{ENGINE_LABELS[id]}</option>)}
 				</select>
 			</div>
+			<AuditLog />
 		</div>
 	);
 }

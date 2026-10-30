@@ -233,7 +233,7 @@ export function ruleSoftware(i: CheckInput): Finding {
 	if (bips.length === 0) return f("software", "na", "Autorprogrammatūra atbilst PIP", "Nav BIP dokumenta.");
 	const found = new Set<string>();
 	for (const d of bips) for (const t of d.tables) for (const row of t) for (const cell of row) for (const re of NON_BIM) { const m = cell.match(re); if (m) found.add(m[0]); }
-	return found.size ? f("software", "warn", "Autorprogrammatūrai var prasīt apliecinājumu", `BIP minēts: ${[...found].join(", ")}. Komisija var prasīt apstiprināt, ka tā ir BIM autorprogrammatūra pēc PIP 6.5.1., un iesniegt apliecinošu dokumentu (NVA 2025/122 precizējums). Sagatavo to jau tagad.`, { where: bips.map((d) => d.label), step: "aizpildit" }) : f("software", "ok", "Autorprogrammatūra", "Nestandarta programmatūra nav minēta.");
+	return found.size ? f("software", "warn", "Autorprogrammatūrai var prasīt apliecinājumu", `BIP minēts: ${[...found].join(", ")}. Komisija var prasīt apstiprināt, ka tā ir BIM autorprogrammatūra pēc PIP prasībām, un iesniegt apliecinošu dokumentu. Sagatavo to jau tagad.`, { where: bips.map((d) => d.label), step: "aizpildit" }) : f("software", "ok", "Autorprogrammatūra", "Nestandarta programmatūra nav minēta.");
 }
 
 /** B13 (BIP side): the BIP's own LOD table vs the matrica, by model code and phase. */
@@ -267,7 +267,7 @@ export function ruleBipVsMatricaLod(i: CheckInput): Finding {
 		}
 	}
 	if (compared === 0) return f("bip-matrica-lod", "na", "BIP LOD tabula sakrīt ar matricu", "BIP nav LOD tabulas ar posmu kolonnām (KC, ST, DT …).");
-	return diffs.length ? f("bip-matrica-lod", "fail", "BIP un matricas LOD nesakrīt", `${diffs.slice(0, 12).join("; ")}${diffs.length > 12 ? " …" : ""}. Komisija prasa skaidrot, kura informācija ir saistoša (NVA 2025/122 precizējums).`, { where: [...bips.map((d) => d.label), ...i.matrices.map((m) => base(m.file))], step: "aizpildit" }) : f("bip-matrica-lod", "ok", "BIP un matricas LOD sakrīt", `${compared} vērtības salīdzinātas.`);
+	return diffs.length ? f("bip-matrica-lod", "fail", "BIP un matricas LOD nesakrīt", `${diffs.slice(0, 12).join("; ")}${diffs.length > 12 ? " …" : ""}. Komisija prasa skaidrot, kura informācija ir saistoša.`, { where: [...bips.map((d) => d.label), ...i.matrices.map((m) => base(m.file))], step: "aizpildit" }) : f("bip-matrica-lod", "ok", "BIP un matricas LOD sakrīt", `${compared} vērtības salīdzinātas.`);
 }
 
 /** Energy comparison only exists when the tender scores energy efficiency (⊘ otherwise, with the reason). */

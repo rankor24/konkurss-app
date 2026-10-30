@@ -471,7 +471,33 @@ def write_docx(spec):
     return {"ok": True, "dst": dst}
 
 
+def selfcheck():
+    """What the app needs from this tools build: used by the dependency screen."""
+    res = {"ok": True, "python": sys.version.split()[0], "frozen": bool(getattr(sys, "frozen", False))}
+    for mod in ("docx", "openpyxl"):
+        try:
+            __import__(mod)
+            res[mod] = True
+        except Exception:
+            res[mod] = False
+    return res
+
+
+def run_script():
+    """konkurss-tools run-script <script.py> [args…]: runs a shipped skill script inside this build (frozen: no Python on the PC)."""
+    import runpy
+    for stream in (sys.stdout, sys.stderr):
+        stream.reconfigure(encoding="utf-8")  # skill scripts print Latvian text; a Windows console would default to cp1252
+    script = sys.argv[2]
+    sys.argv = [script] + sys.argv[3:]
+    sys.path.insert(0, os.path.dirname(script))
+    runpy.run_path(script, run_name="__main__")
+
+
 def main():
+    if len(sys.argv) >= 3 and sys.argv[1] == "run-script":
+        run_script()
+        return
     if len(sys.argv) < 3:
         fail("lietojums: konkurss_tools.py <komanda> <fails>")
     cmd, arg = sys.argv[1], sys.argv[2]
@@ -484,6 +510,8 @@ def main():
             out(fill_xlsx(load_spec(arg)))
         elif cmd == "inspect-xlsx":
             out(inspect_xlsx(arg))
+        elif cmd == "selfcheck":
+            out(selfcheck())
         elif cmd == "read-edoc":
             out(read_edoc(arg))
         elif cmd == "write-docx":

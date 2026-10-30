@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { withHint } from "../shared/hints";
 import { STEP_ICON, type Cited, type StepStatus } from "../shared/state";
 
 /** Every screen opens with two lines: what happens here, and why it matters. */
@@ -87,10 +88,10 @@ export function useAction() {
 		setNote("");
 		try {
 			const r = await fn();
-			if (r && r.ok === false) setError(r.error ?? "Neizdevās.");
+			if (r && r.ok === false) setError(withHint(r.error ?? "Neizdevās."));
 			else await after?.();
 		} catch (e) {
-			setError(String(e instanceof Error ? e.message : e).replace(/^Error invoking remote method '[^']+': (Error: )?/, ""));
+			setError(withHint(String(e instanceof Error ? e.message : e).replace(/^Error invoking remote method '[^']+': (Error: )?/, "")));
 		} finally {
 			setBusy("");
 		}
