@@ -2,7 +2,7 @@
 
 Every task from PLAN.md (v2) and the v1 screen spec it inherits (`docs/plan-v1-electron-pi-2026-08.md` §III–§V).
 A task is ✅ only with **evidence**: a test name, a command output, or a file:line. "Looks done" is not evidence.
-Status: ✅ done+verified · 🟡 done, not verifiable here (reason given) · ⬜ open.
+Status: ✅ logic proven by tests or a live run (screens are built, typechecked and static-render tested; Claude does not open the window) · 🟡 needs a person to look or click (reason given) · ⬜ open.
 
 Rule (Boris, 2026-10-30): phases in sequence, no task skipped, commit after each phase, final audit re-checks every row.
 
@@ -44,15 +44,15 @@ Also done in phase 1 (not separate plan rows): Grok prompt via file (Windows 32k
 
 | ID | Task | Acceptance | Status | Evidence |
 |---|---|---|---|---|
-| 2.1 | Model-task framework: JSON output, zod validation, verbatim-quote grounding, 1 retry, raw error otherwise (D6, D11), atomic commit | unit tests with fake engine: ungrounded → „nav atrasts", malformed twice → error, state untouched | ⬜ | |
-| 2.2 | Edition diff: pick original/amended, paragraph diff in code, model classifies each change (kritērijs/prasība/redakcionāla), person confirms; choose edition in force | diff unit test; UI | ⬜ | |
-| 2.3 | Q&A: list question/answer from komisijas atbildes with quotes; impact proposed by model, confirmed by person | task + UI | ⬜ | |
-| 2.4 | Template comparison: distributed vs nolikumā iekļautā (table row counts + labels, in code) | unit test: 4 vs 5 rows flagged | ⬜ | |
-| 2.5 | Deadline: date + time + source (IUB/EIS/manual), model proposal with quote, second pass | UI + task | ⬜ | |
-| 2.6 | Requirements: 6 blocks (konkursa dati; kas jāiesniedz; uzņēmuma pieredze; speciālisti; vērtēšana; apakšuzņēmēji+ESPD), [Izlasīt] + ☑ Pārbaudīts per block, quote mark per value, „nav atrasts" | task schemas + UI | ⬜ | |
-| 2.7 | Second pass (D6) on deadline, criteria, thresholds: independent re-extraction, disagreement shown as conflict | unit test with fake engine | ⬜ | |
-| 2.8 | Criteria sum check = 100 in code; manual add/edit rows | unit test | ⬜ | |
-| 2.9 | Source priority shown (Q&A > grozījumi > nolikumā iekļautā > izplatītā > PIP > TS/PU) | screen text | ⬜ | |
+| 2.1 | Model-task framework: JSON output, zod validation, verbatim-quote grounding, 1 retry, raw error otherwise (D6, D11), atomic commit | unit tests with fake engine | ✅ | `runner.test.ts` (retry once, malformed twice → error, provider error raw and no retry, fabricated quote dropped); `phase2.test.ts` › provider error leaves the project file byte-for-byte unchanged; numbers/dates must appear in their quote (`grounding-extra`) |
+| 2.2 | Edition diff: pick original/amended, paragraph diff in code, model classifies each change, person confirms; choose edition in force | diff unit test; UI | ✅ | `versions.test.ts`: whitespace/quote-style are not changes, modified/added/removed, order; **real Salacgrīva: 6 changes found incl. the added ESS specialist row and criterion-3 wording**. Live classify via Codex (6 changes). Found + fixed: long table rows hid the changed words → classifier prompt now shows the differing words (test). `ui-phase2.test.tsx` renders editions, impact radios, „piedāvā aģents", „Strādājam ar" |
+| 2.3 | Q&A: list question/answer from komisijas atbildes with quotes; impact proposed by model, confirmed by person | task + UI | ✅ | `phase2.test.ts` Q&A grounding (fake quote rejected, unverifiable answer dropped). **Live Salacgrīva: 9 items (plan said 9), #1 flagged `maina_kriteriju`, 8 `maina_apjomu`, 0 rejected** |
+| 2.4 | Template comparison: distributed vs nolikumā iekļautā (table row counts + labels, in code) | unit test: 4 vs 5 rows flagged | ✅ | `versions.test.ts` synthetic + **real Salacgrīva**: Kvalifikācija 7 vs 8 rows, missing „elektronisko sakaru sistēmu un tīklu; projektēšanā sertificēts projektētājs", Pieteikums 30 = 30 equal; live run: 2 of 10 forms differ (both Kvalifikācija versions), 8 equal |
+| 2.5 | Deadline: date + time + source (IUB/EIS/manual), model proposal with quote, second pass | UI + task | ✅ | `phase2.test.ts`: date/time must be in the quote, wrong date refused, manual deadline never overwritten. **Live: Salacgrīva folder has no IUB notice → „nav atrasts" (correct, not guessed)**; second pass 0 conflicts |
+| 2.6 | Requirements: 6 blocks, [Izlasīt] + ☑ Pārbaudīts per block, quote mark per value, „nav atrasts" | task schemas + UI | ✅ | **Live Salacgrīva (Codex):** dati (purchaser Limbažu novada pašvaldība, ID LNP 2026/96 …), 38 dokumenti, pieredze (1 object / 3 years), 9 specialisti incl. ESS, 3 kritēriji 65/30/5 (BPV 3 objekti), slieksnis 10 000 — each with verified quote. `phase2.test.ts`: only the edition in force is shown to the model; two editions without a choice → no model call; re-reading clears confirmation. `ui-phase2.test.tsx` blocks, quote marks, „nav atrasts" |
+| 2.7 | Second pass (D6) on deadline, criteria, thresholds | unit test with fake engine | ✅ | `phase2.test.ts` › second pass: agreement clean, a real disagreement stored as conflict with both values and first reading kept; `mergeCriteria` flags a criterion the 2nd reading did not find. Live: 0 conflicts. `EditableCited` shows „Atstāt pirmo / Ņemt otro" (render test) |
+| 2.8 | Criteria sum check = 100 in code; manual add/edit rows | unit test | ✅ | `criteriaSum` + `sumOf` tests (100 ✓, 95 ⚠ „nav 100", unknown → „trūkst punktu"); editable/addable/deletable rows in `Prasibas.tsx` (render-tested) |
+| 2.9 | Source priority shown | screen text | ✅ | `ui-phase2.test.tsx` › „komisijas atbildes → grozījumi → …" on the Versija screen |
 
 ## Phase 3 — 5. Kas ko dara (two-sided), 6. BIP + matrica, per-builder copies
 

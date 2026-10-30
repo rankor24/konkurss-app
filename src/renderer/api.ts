@@ -1,5 +1,5 @@
 // Typed access to the preload bridge. One generic invoke, small typed wrappers on top.
-import type { Cited, DocKind, ProjectState, StepId, StepStatus, Variant } from "../shared/state";
+import type { BlockId, Cited, DocKind, ProjectState, QaItem, StepId, StepStatus, Variant } from "../shared/state";
 import type { EngineId, EngineStatus, FolderSummary, Project, RunEvent, Settings } from "../shared/types";
 
 interface Bridge {
@@ -28,8 +28,10 @@ export interface StateBundle {
 	progress: { done: number; total: number; problems: number };
 	checklist: { done: number; total: number };
 	warnings: string[];
+	editions: { candidates: string[]; guess: { original?: string; amended?: string } };
 }
 export type TaskOutcome<T> = ({ ok: true } & T) | { ok: false; error: string };
+export type Impact = "kriterijs" | "prasiba" | "redakcionala";
 
 export const api = {
 	projects: {
@@ -72,6 +74,25 @@ export const api = {
 	tasks: {
 		variant: (projectId: string) => call<TaskOutcome<{ variant: Cited<Variant> }>>("tasks:variant", projectId),
 		confirmVariant: (projectId: string, value: Variant) => call<Project>("tasks:confirmVariant", projectId, value),
+	},
+	versions: {
+		setEditions: (id: string, original?: string, amended?: string) => call<void>("versions:setEditions", id, original, amended),
+		compare: (id: string) => call<TaskOutcome<{ changes: number }>>("versions:compare", id),
+		classify: (id: string) => call<TaskOutcome<{ classified: number }>>("versions:classify", id),
+		confirmChange: (id: string, index: number, impact: Impact | null) => call<void>("versions:confirmChange", id, index, impact),
+		setInForce: (id: string, which: "original" | "amended") => call<void>("versions:setInForce", id, which),
+		readQa: (id: string) => call<TaskOutcome<{ items: number; rejected: number }>>("versions:readQa", id),
+		setQaImpact: (id: string, index: number, impact: QaItem["impact"]) => call<void>("versions:setQaImpact", id, index, impact),
+		confirmQa: (id: string, index: number, value: boolean) => call<void>("versions:confirmQa", id, index, value),
+		compareTemplates: (id: string) => call<TaskOutcome<{ forms: number; differing: number }>>("versions:compareTemplates", id),
+		readDeadline: (id: string) => call<TaskOutcome<object>>("versions:readDeadline", id),
+		setDeadline: (id: string, date: string, time: string, source: "iub" | "eis" | "nolikums" | "manual") => call<void>("versions:setDeadline", id, date, time, source),
+	},
+	req: {
+		read: (id: string, block: BlockId) => call<TaskOutcome<{ rejected: number }>>("req:read", id, block),
+		confirm: (id: string, block: BlockId, value: boolean) => call<void>("req:confirm", id, block, value),
+		edit: (id: string, block: BlockId, data: unknown) => call<void>("req:edit", id, block, data),
+		secondPass: (id: string) => call<TaskOutcome<{ conflicts: number }>>("req:secondPass", id),
 	},
 	audit: { tail: (projectId: string, lines?: number) => call<{ at: string; tool: string; path?: string; ok: boolean; reason?: string; engine?: string }[]>("audit:tail", projectId, lines) },
 };

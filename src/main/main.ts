@@ -5,6 +5,7 @@ import { Store } from "./store.js";
 import { AppContext } from "./context.js";
 import { registerCore } from "./ipc/core.js";
 import { registerPhase1 } from "./ipc/phase1.js";
+import { registerPhase2 } from "./ipc/phase2.js";
 
 const here = import.meta.dirname; // dist/main
 const resourcesDir = app.isPackaged ? process.resourcesPath : join(here, "..", "..", "resources");
@@ -25,6 +26,7 @@ const ctx = new AppContext(
 
 registerCore(ctx);
 registerPhase1(ctx);
+registerPhase2(ctx);
 
 function createWindow(): void {
 	win = new BrowserWindow({

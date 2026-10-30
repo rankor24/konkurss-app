@@ -5,6 +5,8 @@ import type { Project } from "../shared/types";
 import { api, errorText, type StateBundle } from "./api";
 import { Chat } from "./screens/Chat";
 import { Dokumenti } from "./screens/Dokumenti";
+import { Prasibas } from "./screens/Prasibas";
+import { Versija } from "./screens/Versija";
 import { FirstRun } from "./screens/FirstRun";
 import { Konkursi } from "./screens/Konkursi";
 import { NewProject } from "./screens/NewProject";
@@ -15,8 +17,6 @@ import { Banner, StateIcon } from "./ui";
 type View = { kind: "list" } | { kind: "new" } | { kind: "settings" } | { kind: "project"; id: string; step: StepId | "chat" };
 
 const STUBS: Record<string, { title: string; what: string; why?: string; phase: number }> = {
-	versija: { title: "2. Kura versija spēkā", what: "Nolikumu drīkst grozīt pēc publicēšanas, un komisijas atbildes var mainīt vērtēšanas kritērijus.", why: "Ja strādāsi ar veco redakciju, vari izpildīt prasību, kas vairs nav spēkā.", phase: 2 },
-	prasibas: { title: "3. Ko konkurss prasa", what: "App izlasa nolikumu un piedāvā, ko tas prasa. Pie katras vērtības redzams teikums, no kura tā nolasīta.", why: "Visi turpmākie soļi balstās uz šo.", phase: 2 },
 	varam: { title: "4. Vai varam pieteikties", what: "Pirms sāc aizpildīt, app salīdzina konkursa prasības ar mūsu reģistriem.", phase: 4 },
 	kas: { title: "5. Kas ko dara", what: "Šeit savieno konkursa prasības ar mūsu cilvēkiem un objektiem.", phase: 3 },
 	aizpildit: { title: "6. Aizpildīt", what: "App saliek katram dokumentam sarakstu, kas kur jāieraksta un no kurienes tas nāk.", phase: 3 },
@@ -90,6 +90,8 @@ export function App() {
 				</div>
 			);
 		if (view.step === "dokumenti") return <Dokumenti project={project} bundle={bundle} reload={reload} onProjectChanged={loadProjects} />;
+		if (view.step === "versija") return <Versija project={project} bundle={bundle} reload={reload} />;
+		if (view.step === "prasibas") return <Prasibas project={project} bundle={bundle} reload={reload} />;
 		const s = STUBS[view.step];
 		return <Stub {...s} />;
 	};

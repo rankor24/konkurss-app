@@ -10,7 +10,7 @@ const INVOKE = new Set([
 	"state:get",
 	"files:scan", "files:extract", "files:setKind", "files:text", "files:openOne",
 	"tasks:variant", "tasks:confirmVariant",
-	"versions:compare", "versions:setInForce", "versions:readQa", "versions:setQaImpact", "versions:confirmChange",
+	"versions:setEditions", "versions:compare", "versions:classify", "versions:setInForce", "versions:readQa", "versions:setQaImpact", "versions:confirmQa", "versions:confirmChange",
 	"versions:compareTemplates", "versions:readDeadline", "versions:setDeadline",
 	"req:read", "req:confirm", "req:edit", "req:secondPass",
 	"registers:get", "registers:save", "registers:import",

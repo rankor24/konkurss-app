@@ -98,12 +98,18 @@ export interface TemplateDiff {
 	distributedRows: number;
 	embeddedRows: number;
 	missingLabels: string[];
+	/** rows only in the distributed form */
+	extraLabels?: string[];
 	equal: boolean;
 }
 
 export interface Versions {
+	/** files chosen as the two editions, as "root:rel" */
 	originalFile?: string;
 	amendedFile?: string;
+	diffedAt?: string;
+	qaReadAt?: string;
+	templatesComparedAt?: string;
 	inForce: "original" | "amended" | null;
 	changes: EditionChange[];
 	qa: QaItem[];
@@ -113,7 +119,7 @@ export interface Versions {
 export interface Deadline {
 	date: Cited<string>;
 	time: Cited<string>;
-	source: "iub" | "eis" | "manual" | null;
+	source: "iub" | "eis" | "nolikums" | "manual" | null;
 }
 
 export interface RequiredDoc {

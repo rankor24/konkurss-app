@@ -65,7 +65,7 @@ export function checklist(s: ProjectState): ChecklistItem[] {
 		{ step: "dokumenti", label: "Visi nolasāmie faili nolasīti", done: !!s.extractedAt && !s.files.some((f) => f.text === "kluda" || f.text === "tukss") },
 		{ step: "versija", label: "Spēkā esošā redakcija izvēlēta", done: !!s.versions.inForce },
 		{ step: "versija", label: "Komisijas atbildes apstiprinātas", done: s.versions.qa.length > 0 && s.versions.qa.every((q) => q.confirmed) },
-		{ step: "versija", label: "Veidlapas salīdzinātas", done: s.versions.templates.length > 0 && s.versions.templates.every((t) => t.equal) },
+		{ step: "versija", label: "Veidlapas salīdzinātas", done: !!s.versions.templatesComparedAt && s.versions.templates.every((t) => t.equal) },
 		{ step: "versija", label: "Termiņš ievadīts", done: s.deadline.date.value !== null },
 	];
 	for (const [id, label] of [

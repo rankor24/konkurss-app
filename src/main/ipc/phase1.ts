@@ -8,6 +8,7 @@ import type { AppContext } from "../context.js";
 import { extractAll, fileWarnings, readCachedText, scanFolders } from "../extract.js";
 import { loadState, stateDir, updateState } from "../project-state.js";
 import { detectVariant } from "../tasks/variant-run.js";
+import { editionCandidates, fileKey, guessEditions } from "../tasks/phase2-run.js";
 
 export function registerPhase1(ctx: AppContext): void {
 	ipcMain.handle("projects:summaries", () =>
@@ -34,6 +35,7 @@ export function registerPhase1(ctx: AppContext): void {
 			progress: progress(s),
 			checklist: { done: items.filter((i) => i.done).length, total: items.length },
 			warnings: fileWarnings(s.files),
+			editions: { candidates: editionCandidates(s.files).map(fileKey), guess: guessEditions(s.files) },
 		};
 	});
 
