@@ -1,0 +1,39 @@
+appId: lv.buvdizains.konkursi
+productName: Konkursu App
+copyright: SIA BŪVDIZAINS
+
+directories:
+  output: release
+
+files:
+  - dist/**/*
+  - package.json
+  - "!**/*.map"
+
+# Skills (and their Python scripts) must be real files: Python cannot read inside asar.
+extraResources:
+  - from: resources/plugin
+    to: plugin
+
+asar: true
+# Native agent binaries are spawned as processes, so they must live outside asar.
+asarUnpack:
+  - node_modules/@anthropic-ai/claude-agent-sdk-*/**
+  - node_modules/@openai/codex-*/**
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  # Unsigned internal tool: SmartScreen warns on first run (PLAN.md §7).
+  signAndEditExecutable: true
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Konkursu App
+  # Keep projects, settings and the encrypted key on uninstall.
+  deleteAppDataOnUninstall: false
