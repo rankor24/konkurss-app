@@ -23,7 +23,7 @@ const INVOKE = new Set([
 	"closeout:get", "closeout:save", "closeout:addObject", "closeout:postwin", "clarify:draft",
 	"deps:status", "grok:update",
 ]);
-const EVENTS = new Set(["agent:event", "files:progress", "task:text"]);
+const EVENTS = new Set(["agent:event", "files:progress", "task:text", "activity"]);
 
 contextBridge.exposeInMainWorld("konkurss", {
 	invoke: (channel: string, ...args: unknown[]) => {

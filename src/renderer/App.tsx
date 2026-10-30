@@ -19,6 +19,7 @@ import { SettingsScreen } from "./screens/Settings";
 import { Parbaude } from "./screens/Parbaude";
 import { Paraksti } from "./screens/Paraksti";
 import { Rezultats } from "./screens/Rezultats";
+import { ActivityPanel } from "./screens/ActivityPanel";
 import { Banner, StateIcon } from "./ui";
 
 type View = { kind: "list" } | { kind: "new" } | { kind: "settings" } | { kind: "registers" } | { kind: "project"; id: string; step: StepId | "chat" };
@@ -136,6 +137,7 @@ export function App() {
 					<button className={`rail-item ${view.kind === "settings" ? "active" : ""}`} onClick={() => setView({ kind: "settings" })}>Iestatījumi</button>
 				</nav>
 				<main className="main">{main()}</main>
+				<ActivityPanel projectId={project?.id ?? null} />
 			</div>
 
 			<footer className="statusbar">

@@ -3,6 +3,7 @@ import type { BlockId, Choices, Cited, DocKind, FillSheet, ProjectState, QaItem,
 import type { Expiry, Registers } from "../shared/registers";
 import type { LeakReport } from "../shared/leaks";
 import type { DepItem } from "../shared/deps";
+import type { Activity } from "../shared/activity";
 import type { CheckRun, Closeout, Finding, SignatureRow, SignatureVerdict } from "../shared/checks";
 import type { EngineId, EngineStatus, FolderSummary, Project, RunEvent, Settings } from "../shared/types";
 
@@ -36,6 +37,8 @@ export interface StateBundle {
 }
 export type TaskOutcome<T> = ({ ok: true } & T) | { ok: false; error: string };
 export type Impact = "kriterijs" | "prasiba" | "redakcionala";
+
+export const onActivity = (cb: (a: Activity) => void) => window.konkurss.on("activity", cb as (...a: unknown[]) => void);
 
 export const api = {
 	projects: {

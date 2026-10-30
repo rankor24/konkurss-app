@@ -7,6 +7,7 @@ import { createEngines, mcpLaunch } from "./engines/index.js";
 import type { Engine, RunOptions } from "./engines/types.js";
 import { pyConfigFromEnv, type PyConfig } from "../mcp/python.js";
 import { loadState } from "./project-state.js";
+import { withActivity } from "./activity.js";
 
 export interface Paths {
 	pluginDir: string;
@@ -17,6 +18,8 @@ export interface Paths {
 export class AppContext {
 	readonly engines: Record<EngineId, Engine>;
 	readonly py: PyConfig;
+	/** run folder → project id, so the activity panel knows which tender a run belongs to */
+	private readonly runDirs = new Map<string, string>();
 
 	constructor(
 		readonly store: Store,
@@ -39,12 +42,14 @@ export class AppContext {
 
 	/** Engine chosen for model tasks in Iestatījumi. */
 	taskEngine(): Engine {
-		return this.engines[this.store.settings().engineForTasks];
+		return withActivity(this.engines[this.store.settings().engineForTasks], (a) => this.emit("activity", a), (dir) => this.runDirs.get(dir) ?? null);
 	}
 
 	runBase(project: Project, engine: EngineId, signal: AbortSignal): Omit<RunOptions, "prompt" | "onEvent"> {
+		const runDir = this.store.runDir(project.id);
+		this.runDirs.set(runDir, project.id);
 		return {
-			runDir: this.store.runDir(project.id),
+			runDir,
 			pluginDir: this.paths.pluginDir,
 			mcp: mcpLaunch({
 				serverJs: this.paths.serverJs,
