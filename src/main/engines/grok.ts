@@ -86,10 +86,15 @@ export function writeGrokRunConfig(o: RunOptions): void {
 	);
 }
 
+/** Prompts carry whole documents; Windows caps a command line at ~32k chars, so they go through a file. */
+export function promptFile(o: RunOptions): string {
+	return join(o.runDir, "prompt.txt");
+}
+
 export function grokArgs(o: RunOptions): string[] {
 	const args = [
-		"-p",
-		o.prompt,
+		"--prompt-file",
+		promptFile(o),
 		"--output-format",
 		"streaming-json",
 		"--cwd",
@@ -136,6 +141,7 @@ export function createGrokEngine(): Engine {
 					return resolve();
 				}
 				writeGrokRunConfig(o);
+				writeFileSync(promptFile(o), o.prompt, "utf8");
 				// GROK_WORKFLOWS=0 removes the workflow `execute` tool on every route.
 				const child = spawn(bin, grokArgs(o), { cwd: o.runDir, windowsHide: true, env: { ...process.env, GROK_WORKFLOWS: "0" } });
 				o.signal.addEventListener("abort", () => child.kill(), { once: true });

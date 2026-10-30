@@ -87,6 +87,8 @@ test("grok: shell, edits, reads and web removed; only konkurss MCP allowed", () 
 	assert.ok(a.includes("--disable-web-search"));
 	assert.ok(a.includes("--trust"), "run-folder policy is ignored without --trust");
 	assert.ok(!a.includes("--no-memory"), "removed in grok 1.0");
+	assert.ok(!a.includes("-p") && a.includes("--prompt-file"), "prompt goes through a file (32k command-line limit)");
+	assert.ok(!a.some((x) => x.includes("Kas ir šajā konkursā")), "prompt text never on the command line");
 });
 
 test("grok run folder gets MCP config and deny-by-default policy", () => {

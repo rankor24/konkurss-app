@@ -24,19 +24,21 @@ Rule (Boris, 2026-10-30): phases in sequence, no task skipped, commit after each
 
 | ID | Task | Acceptance | Status | Evidence |
 |---|---|---|---|---|
-| 1.1 | Visual tokens per v1 §III (light+dark, state icons ○◐●⚠⊘, quote mark, 🔒) | CSS tokens present, both themes | ⬜ | |
-| 1.2 | Layout: rail with 10 numbered steps + status icon, Konkursi/Reģistri/Iestatījumi, top bar (tender, ID, deadline countdown, čeklists x/y), status bar safety line | renders from state; step status computed from project state (unit test) | ⬜ | |
-| 1.3 | Every screen opens with 2-line "what / why" | each screen component has intro | ⬜ | |
-| 1.4 | First run: Sveicināti → atslēga/pieslēgšanās → pirmā mape | shown when no projects + no engine ready; skippable | ⬜ | |
-| 1.5 | Project list: name, ID, deadline, progress n/10, last change, ⚠ count, [×] forget with "faili paliek" | store test + UI | ⬜ | |
-| 1.6 | Wizard: 2 folder pickers + counts + empty/Desktop warning, variant, builders, name | existing; add variant detection with quote | ⬜ | |
-| 1.7 | Variant detection by model with verbatim quote (grounded) | grounding unit test; live on NVA → V2 with "Projektē un būvē" quote | ⬜ | |
-| 1.8 | Project state file `<output>\.konkurss\project.json`, atomic write, backup on change | state tests | ⬜ | |
-| 1.9 | Dokumenti: [Pārskatīt mapi] scan both folders, Kur (Konkursa dokumenti / Mūsu piedāvājums / Darba faili), Veids guessed + editable + persisted | classify unit tests on NVA + VUGD file names | ⬜ | |
-| 1.10 | [Nolasīt tekstu]: extract all files to cache, ✓ / ⚠ (scanned, unreadable, .edoc not openable → ask for readable copy) | test on NVA: N of M read, list of failures | ⬜ | |
-| 1.11 | Filters (Kur, Veids, nenolasītie), search over names, preview panel with in-text search | UI | ⬜ | |
-| 1.12 | Warnings strip: scanned PDFs, unreadable .edoc | computed list test | ⬜ | |
-| 1.13 | Both fixtures (NVA, VUGD 2) create projects; builders added | fixture test | ⬜ | |
+| 1.1 | Visual tokens per v1 §III (light+dark, state icons ○◐●⚠⊘, quote mark, 🔒) | CSS tokens present, both themes | ✅ | `ui-render.test.tsx` › theme tokens (12 colours × 2 themes, Segoe UI, Consolas); `StateIcon`, `CitedValue` quote mark; `.secret` class ready for phase 4 |
+| 1.2 | Layout: rail with 10 numbered steps + status icon, Konkursi/Reģistri/Iestatījumi, top bar (tender, ID, deadline countdown, čeklists x/y), status bar safety line | renders from state; step status computed from project state (unit test) | ✅ | `state.test.ts` step status (nav→proc→gatavs/problema, template mismatch, D6 conflict); `format.test.ts` countdown + checklist; `ui-render.test.tsx` rail/status-bar strings. Reģistri item is disabled until phase 3. Window not opened by Claude |
+| 1.3 | Every screen opens with 2-line "what / why" | each screen component has intro | ✅ | `ui-render.test.tsx` › every screen renders its two-line intro (Konkursi, NewProject, Settings, FirstRun, Dokumenti, Stub) |
+| 1.4 | First run: Sveicināti → atslēga/pieslēgšanās → pirmā mape | shown when no projects + never dismissed; skippable | 🟡 | `FirstRun.tsx` (3 steps, Izlaist) renders in test; shown by `App.tsx` when `projects.length === 0 && !firstRunDone`. Flow not clicked through — Boris to look |
+| 1.5 | Project list: name, ID, deadline, progress n/10, last change, ⚠ count, [×] forget with "faili paliek" | store test + UI | 🟡 | `store.test.ts` forget never touches folders; `projects:summaries` + `Konkursi.tsx` built, typecheck + build clean. List with data not viewed |
+| 1.6 | Wizard: 2 folder pickers + counts + empty/Desktop warning, variant, builders, name | folder summaries, creation | 🟡 | `store.test.ts` folder summary + validation; `phase1-logic.test.ts` creation on NVA/VUGD; `NewProject.tsx` renders. Native folder dialog not exercised |
+| 1.7 | Variant detection by model with verbatim quote (grounded) | grounding unit test; live: NVA → V2 | ✅ | `grounding.test.ts`, `runner.test.ts` (fabricated quote dropped). **Live via Codex:** NVA → V2 (quote from NOLIKUMS_14_07_2026.docx), VUGD 2 → V2 (Projektēšanas uzdevums), Salacgrīva → V1 (nolikums96_28_05_2.docx); each quote verified in full text |
+| 1.8 | Project state file `<output>\.konkurss\project.json`, atomic write, backup on change | state tests | ✅ | `state.test.ts`: atomic save + project.prev.json, old-version upgrade keeps unknown keys, corrupt file reported, failed change leaves file intact |
+| 1.9 | Dokumenti: [Pārskatīt mapi] scan both folders, Kur, Veids guessed + editable + persisted | classify tests on NVA + VUGD names | ✅ | `classify.test.ts` (19 real names + diacritics + folder-decides); `fixture-extract.test.ts`: key docs classified on both tenders, user correction survives rescan, unchanged file keeps text |
+| 1.10 | [Nolasīt tekstu]: extract all files to cache, ✓ / ⚠ (scanned, unreadable, .edoc not openable) | N of M read, list of failures | ✅ | `fixture-extract.test.ts` (real run): NVA 315/328 read, 13 flagged (all scanned PDFs, named); VUGD 52/52. Found + fixed: single `.xlsx` failed everywhere and only sheet 1 was read → `extract_docs.py` now reads every sheet with cell refs (backup in work/skill-backups) |
+| 1.11 | Filters (Kur, Veids, nenolasītie), search over names, preview panel with in-text search | UI | 🟡 | `Dokumenti.tsx` built; renders in `ui-render.test.tsx` (table, corrections marked, scanned warning). Filtering/preview interaction not clicked |
+| 1.12 | Warnings strip: scanned PDFs, unreadable .edoc | computed list test | ✅ | `phase1-logic.test.ts` › warnings; real scanned-PDF list from NVA run |
+| 1.13 | Both fixtures (NVA, VUGD 2) create projects; builders added | fixture test | ✅ | `phase1-logic.test.ts`: NVA [SB, Pillar, UPB], VUGD [MARPIBUVE, UPB], V2; plus scan+extract on both |
+
+Also done in phase 1 (not separate plan rows): Grok prompt via file (Windows 32k command-line limit); preload channel allowlist for all later phases; IPC split into `ipc/*`; excerpts for model tasks (`docs.ts` `excerpt`) keep quotes checkable against full text.
 
 ## Phase 2 — 2. Kura versija spēkā, 3. Ko konkurss prasa
 

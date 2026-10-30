@@ -1,36 +1,39 @@
-// Narrow bridge: the renderer can only call these named actions.
+// Narrow bridge: the renderer may only call channels on this allowlist.
 import { contextBridge, ipcRenderer } from "electron";
 
-const api = {
-	projects: {
-		list: () => ipcRenderer.invoke("projects:list"),
-		add: (input: unknown) => ipcRenderer.invoke("projects:add", input),
-		update: (id: string, patch: unknown) => ipcRenderer.invoke("projects:update", id, patch),
-		forget: (id: string) => ipcRenderer.invoke("projects:forget", id),
-	},
-	folders: {
-		pick: (title: string) => ipcRenderer.invoke("folders:pick", title),
-		summary: (path: string) => ipcRenderer.invoke("folders:summary", path),
-		open: (path: string) => ipcRenderer.invoke("folders:open", path),
-	},
-	settings: {
-		get: () => ipcRenderer.invoke("settings:get"),
-		save: (patch: unknown) => ipcRenderer.invoke("settings:save", patch),
-		setClaudeKey: (key: string) => ipcRenderer.invoke("settings:setClaudeKey", key),
-	},
-	engines: {
-		status: () => ipcRenderer.invoke("engines:status"),
-		login: (id: string) => ipcRenderer.invoke("engines:login", id),
-	},
-	agent: {
-		run: (req: unknown) => ipcRenderer.invoke("agent:run", req),
-		stop: (runId: string) => ipcRenderer.invoke("agent:stop", runId),
-		onEvent: (cb: (runId: string, ev: unknown) => void) => {
-			const listener = (_e: unknown, runId: string, ev: unknown) => cb(runId, ev);
-			ipcRenderer.on("agent:event", listener);
-			return () => ipcRenderer.removeListener("agent:event", listener);
-		},
-	},
-};
+const INVOKE = new Set([
+	"projects:list", "projects:add", "projects:update", "projects:forget", "projects:summaries",
+	"folders:pick", "folders:summary", "folders:open",
+	"settings:get", "settings:save", "settings:setClaudeKey",
+	"engines:status", "engines:login",
+	"agent:run", "agent:stop", "audit:tail",
+	"state:get",
+	"files:scan", "files:extract", "files:setKind", "files:text", "files:openOne",
+	"tasks:variant", "tasks:confirmVariant",
+	"versions:compare", "versions:setInForce", "versions:readQa", "versions:setQaImpact", "versions:confirmChange",
+	"versions:compareTemplates", "versions:readDeadline", "versions:setDeadline",
+	"req:read", "req:confirm", "req:edit", "req:secondPass",
+	"registers:get", "registers:save", "registers:import",
+	"roles:get", "roles:save",
+	"fill:inspect", "fill:bip", "fill:matrica", "fill:builderCopies", "fill:leaks", "fill:valueSheet", "fill:generate", "fill:techProposal", "fill:techDecision",
+	"feasibility:get", "feasibility:save", "mapping:get", "mapping:save", "finance:get", "finance:save",
+	"proofs:plan", "proofs:collect",
+	"checks:run", "checks:substance",
+	"signatures:get", "signatures:save",
+	"closeout:get", "closeout:save", "closeout:addObject", "clarify:draft",
+	"deps:status",
+]);
+const EVENTS = new Set(["agent:event", "files:progress", "task:text"]);
 
-contextBridge.exposeInMainWorld("konkurss", api);
+contextBridge.exposeInMainWorld("konkurss", {
+	invoke: (channel: string, ...args: unknown[]) => {
+		if (!INVOKE.has(channel)) return Promise.reject(new Error(`Nezināms kanāls: ${channel}`));
+		return ipcRenderer.invoke(channel, ...args);
+	},
+	on: (channel: string, cb: (...args: unknown[]) => void) => {
+		if (!EVENTS.has(channel)) throw new Error(`Nezināms notikums: ${channel}`);
+		const listener = (_e: unknown, ...args: unknown[]) => cb(...args);
+		ipcRenderer.on(channel, listener);
+		return () => ipcRenderer.removeListener(channel, listener);
+	},
+});
