@@ -55,6 +55,11 @@ export class AppContext {
 			const inner = this.engines[id];
 			return { id, status: () => inner.status(), run: async (o) => o.onEvent({ type: "error", engine: id, message: AGENT_OFF }) };
 		}
+		return this.observed(id);
+	}
+
+	/** An engine whose runs are shown step by step in the side panel — model tasks and the Aģents chat alike. */
+	observed(id: EngineId): Engine {
 		return withActivity(this.engines[id], (a) => this.emit("activity", a), (dir) => this.runDirs.get(dir) ?? null);
 	}
 

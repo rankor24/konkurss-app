@@ -48,7 +48,7 @@ export function registerCore(ctx: AppContext): void {
 		};
 		try {
 			if (!ctx.agentOn()) send({ type: "error", engine: req.engine, message: AGENT_OFF });
-			else await ctx.engines[req.engine].run({ ...ctx.runBase(project, req.engine, abort.signal), prompt: buildPrompt(project, req.text), onEvent: send });
+			else await ctx.observed(req.engine).run({ ...ctx.runBase(project, req.engine, abort.signal), prompt: buildPrompt(project, req.text), onEvent: send });
 		} finally {
 			running.delete(req.runId);
 		}

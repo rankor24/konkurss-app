@@ -17,11 +17,18 @@ export interface EngineStatus {
 	canLogin: boolean;
 }
 
+/** What a tool call does, as far as the side panel needs to tell: reading, searching, editing, a shell command, the web, a plan. */
+export type ToolKind = "read" | "search" | "edit" | "shell" | "web" | "plan" | "other";
+
 /** One streamed event from an engine run, already normalised across vendors. */
 export type RunEvent =
 	| { type: "text"; text: string }
-	| { type: "tool"; name: string; detail?: string }
-	| { type: "tool_result"; name: string; ok: boolean; detail?: string }
+	/** The model's reasoning (a summary, or the thinking itself), as the vendor gives it. */
+	| { type: "thinking"; text: string }
+	/** A new model response begins (the n-th of this run). */
+	| { type: "turn"; n: number }
+	| { type: "tool"; name: string; detail?: string; /** pairs the call with its result */ id?: string; kind?: ToolKind }
+	| { type: "tool_result"; name: string; ok: boolean; detail?: string; id?: string; /** what the tool returned, shortened */ output?: string }
 	| { type: "done"; text: string }
 	/** Raw provider error, never rewritten (decision D11). */
 	| { type: "error"; engine: EngineId; message: string };

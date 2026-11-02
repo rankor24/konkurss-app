@@ -7,6 +7,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Engine, RunOptions } from "./types.js";
 import { MCP_SERVER_NAME } from "./types.js";
+import type { RunEvent, ToolKind } from "../../shared/types.js";
 
 /**
  * Built-in Grok tools removed for app runs: anything that runs commands, edits or reads files
@@ -115,6 +116,81 @@ export function grokArgs(o: RunOptions): string[] {
 	return args;
 }
 
+/** Grok's tool kinds (ACP) in the side panel's words. */
+const GROK_KINDS: Record<string, ToolKind> = { read: "read", search: "search", edit: "edit", delete: "edit", move: "edit", execute: "shell", fetch: "web" };
+
+/** State the mapper needs between lines of one run. */
+export interface GrokState {
+	text: string;
+	turns: number;
+	/** a usage line closed the previous model response; the next event opens a new turn */
+	newTurn: boolean;
+	finished: boolean;
+	names: Map<string, string>;
+}
+
+interface GrokLine {
+	type?: string;
+	data?: string;
+	message?: string;
+	toolName?: string;
+	title?: string;
+	kind?: string;
+	status?: string;
+	rawInput?: unknown;
+	rawOutput?: unknown;
+	entries?: unknown;
+	toolCallId?: string;
+}
+
+/** One line of `--output-format streaming-json` as the events the side panel and the runner understand. Pure, so it can be tested on lines from Grok's own documentation. */
+export function grokEvents(line: string, st: GrokState): RunEvent[] {
+	if (!line.trim()) return [];
+	let ev: GrokLine;
+	try {
+		ev = JSON.parse(line);
+	} catch {
+		return []; // non-JSON noise
+	}
+	const out: RunEvent[] = [];
+	const emit = (e: RunEvent) => void out.push(e);
+	if (ev.type === "usage") {
+		st.newTurn = true;
+		return out;
+	}
+	if (st.newTurn && (ev.type === "text" || ev.type === "thought" || ev.type === "tool_call" || ev.type === "plan")) {
+		st.newTurn = false;
+		emit({ type: "turn", n: ++st.turns });
+	}
+	if (ev.type === "text" && ev.data) {
+		st.text += ev.data;
+		emit({ type: "text", text: ev.data });
+	} else if (ev.type === "thought" && ev.data) {
+		emit({ type: "thinking", text: ev.data });
+	} else if (ev.type === "plan") {
+		const entries = Array.isArray(ev.entries) ? (ev.entries as { content?: string; status?: string }[]) : [];
+		emit({ type: "tool", name: "plan", id: `plan-${st.turns}`, kind: "plan", detail: entries.map((x) => `${x.status === "completed" ? "[x]" : "[ ]"} ${x.content ?? ""}`).join("\n") });
+		emit({ type: "tool_result", name: "plan", id: `plan-${st.turns}`, ok: true });
+	} else if (ev.type === "tool_call") {
+		const name = ev.toolName ?? ev.title ?? "rīks";
+		st.names.set(ev.toolCallId ?? "", name);
+		emit({ type: "tool", name, id: ev.toolCallId, kind: GROK_KINDS[ev.kind ?? ""] ?? "other", detail: ev.rawInput ? JSON.stringify(ev.rawInput).slice(0, 600) : undefined });
+	} else if (ev.type === "tool_call_update" && (ev.status === "completed" || ev.status === "failed")) {
+		const name = st.names.get(ev.toolCallId ?? "") ?? "rīks";
+		const output = ev.rawOutput === undefined ? undefined : (typeof ev.rawOutput === "string" ? ev.rawOutput : JSON.stringify(ev.rawOutput)).slice(0, 2000);
+		emit({ type: "tool_result", name, id: ev.toolCallId, ok: ev.status === "completed", output });
+	} else if (ev.type === "error") {
+		st.finished = true;
+		emit({ type: "error", engine: "grok", message: ev.message ?? line });
+	} else if (ev.type === "end") {
+		st.finished = true;
+		emit({ type: "done", text: st.text });
+	} else if (ev.type === "max_turns_reached") {
+		emit({ type: "error", engine: "grok", message: "Sasniegts maksimālais soļu skaits (max_turns_reached)." });
+	}
+	return out;
+}
+
 export function createGrokEngine(): Engine {
 	return {
 		id: "grok",
@@ -146,37 +222,10 @@ export function createGrokEngine(): Engine {
 				const child = spawn(bin, grokArgs(o), { cwd: o.runDir, windowsHide: true, env: { ...process.env, GROK_WORKFLOWS: "0" } });
 				o.signal.addEventListener("abort", () => child.kill(), { once: true });
 				let buffer = "";
-				let text = "";
 				let stderr = "";
-				let finished = false;
-				const toolNames = new Map<string, string>();
+				const st: GrokState = { text: "", turns: 0, newTurn: true, finished: false, names: new Map() };
 				const handle = (line: string) => {
-					if (!line.trim()) return;
-					let ev: { type?: string; data?: string; message?: string; toolName?: string; title?: string; status?: string; rawInput?: unknown; toolCallId?: string };
-					try {
-						ev = JSON.parse(line);
-					} catch {
-						return; // non-JSON noise
-					}
-					if (ev.type === "text" && ev.data) {
-						text += ev.data;
-						o.onEvent({ type: "text", text: ev.data });
-					} else if (ev.type === "tool_call") {
-						const name = ev.toolName ?? ev.title ?? "rīks";
-						toolNames.set(ev.toolCallId ?? "", name);
-						o.onEvent({ type: "tool", name, detail: ev.rawInput ? JSON.stringify(ev.rawInput).slice(0, 300) : undefined });
-					} else if (ev.type === "tool_call_update" && (ev.status === "completed" || ev.status === "failed")) {
-						const name = toolNames.get(ev.toolCallId ?? "") ?? "rīks";
-						o.onEvent({ type: "tool_result", name, ok: ev.status === "completed" });
-					} else if (ev.type === "error") {
-						finished = true;
-						o.onEvent({ type: "error", engine: "grok", message: ev.message ?? line });
-					} else if (ev.type === "end") {
-						finished = true;
-						o.onEvent({ type: "done", text });
-					} else if (ev.type === "max_turns_reached") {
-						o.onEvent({ type: "error", engine: "grok", message: "Sasniegts maksimālais soļu skaits (max_turns_reached)." });
-					}
+					for (const r of grokEvents(line, st)) o.onEvent(r);
 				};
 				child.stdout.setEncoding("utf8");
 				child.stdout.on("data", (chunk: string) => {
@@ -189,10 +238,10 @@ export function createGrokEngine(): Engine {
 				child.stderr.on("data", (c: string) => (stderr += c));
 				child.on("close", (code) => {
 					handle(buffer);
-					if (!finished) {
+					if (!st.finished) {
 						o.onEvent(
 							code === 0
-								? { type: "done", text }
+								? { type: "done", text: st.text }
 								: { type: "error", engine: "grok", message: `grok exit ${code}: ${stderr.trim().slice(-2000)}` },
 						);
 					}

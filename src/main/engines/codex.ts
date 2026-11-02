@@ -1,12 +1,17 @@
 // Codex engine — official @openai/codex-sdk, signed in with the person's own
 // `codex login` (ChatGPT subscription). The app never touches the Codex token.
-import { Codex, type ThreadOptions } from "@openai/codex-sdk";
+import { Codex, type ThreadEvent, type ThreadOptions } from "@openai/codex-sdk";
 import { execFile, spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
+import type { RunEvent } from "../../shared/types.js";
 import type { Engine, RunOptions } from "./types.js";
 import { KONKURSS_TOOLS, MCP_SERVER_NAME } from "./types.js";
+import { shellKind } from "../../shared/activity.js";
+
+/** How much of a tool's output the side panel keeps. */
+const OUTPUT_MAX = 2000;
 
 const PLATFORM: Record<string, { pkg: string; triple: string }> = {
 	"win32-x64": { pkg: "@openai/codex-win32-x64", triple: "x86_64-pc-windows-msvc" },
@@ -69,6 +74,58 @@ function codexCli(args: string[]): Promise<{ code: number; out: string }> {
 	});
 }
 
+/** State the mapper needs between events. */
+export interface CodexState {
+	turns: number;
+	/** the last thing the agent said, which is the answer once the run ends */
+	last: string;
+}
+
+/** One Codex event as the events the side panel and the runner understand. Pure, so it can be tested on recorded events. */
+export function codexEvents(ev: ThreadEvent, st: CodexState): RunEvent[] {
+	const out: RunEvent[] = [];
+	const emit = (e: RunEvent) => void out.push(e);
+	if (ev.type === "turn.started") emit({ type: "turn", n: ++st.turns });
+	else if (ev.type === "item.started") {
+		const it = ev.item;
+		if (it.type === "mcp_tool_call") emit({ type: "tool", name: it.tool, id: it.id, detail: JSON.stringify(it.arguments).slice(0, 600) });
+		else if (it.type === "command_execution") emit({ type: "tool", name: "shell", id: it.id, kind: shellKind(it.command), detail: it.command.slice(0, 600) });
+		else if (it.type === "web_search") emit({ type: "tool", name: "web_search", id: it.id, kind: "web", detail: it.query });
+	} else if (ev.type === "item.completed") {
+		const it = ev.item;
+		if (it.type === "agent_message") {
+			st.last = it.text;
+			emit({ type: "text", text: it.text });
+		} else if (it.type === "reasoning") {
+			if (it.text.trim()) emit({ type: "thinking", text: it.text });
+		} else if (it.type === "mcp_tool_call") {
+			const text = (it.result?.content ?? []).map((b) => (b.type === "text" ? b.text : "")).join("\n");
+			emit({ type: "tool_result", name: it.tool, id: it.id, ok: it.status === "completed", detail: it.error?.message, output: text.slice(0, OUTPUT_MAX) });
+		} else if (it.type === "command_execution") {
+			const failed = it.status === "failed" || (it.exit_code !== undefined && it.exit_code !== 0);
+			emit({ type: "tool_result", name: "shell", id: it.id, ok: !failed, detail: failed ? `exit ${it.exit_code ?? "?"}` : undefined, output: it.aggregated_output.slice(0, OUTPUT_MAX) });
+		} else if (it.type === "web_search") {
+			emit({ type: "tool_result", name: "web_search", id: it.id, ok: true });
+		} else if (it.type === "file_change") {
+			const list = it.changes.map((x) => `${x.kind} ${x.path}`).join("\n");
+			emit({ type: "tool", name: "file_change", id: it.id, kind: "edit", detail: list });
+			emit({ type: "tool_result", name: "file_change", id: it.id, ok: it.status === "completed" });
+		} else if (it.type === "todo_list") {
+			emit({ type: "tool", name: "plan", id: it.id, kind: "plan", detail: it.items.map((x) => `${x.completed ? "[x]" : "[ ]"} ${x.text}`).join("\n") });
+			emit({ type: "tool_result", name: "plan", id: it.id, ok: true });
+		} else if (it.type === "error") {
+			emit({ type: "error", engine: "codex", message: it.message });
+		}
+	} else if (ev.type === "turn.failed") {
+		emit({ type: "error", engine: "codex", message: ev.error.message });
+		return out;
+	} else if (ev.type === "error") {
+		emit({ type: "error", engine: "codex", message: ev.message });
+		return out;
+	}
+	return out;
+}
+
 export function createCodexEngine(): Engine {
 	return {
 		id: "codex",
@@ -89,31 +146,13 @@ export function createCodexEngine(): Engine {
 				const codex = new Codex({ config: codexConfig(o), ...(exe !== "codex" ? { codexPathOverride: exe } : {}) });
 				const thread = codex.startThread(codexThreadOptions(o));
 				const { events } = await thread.runStreamed(o.prompt, { signal: o.signal });
-				let last = "";
+				const st: CodexState = { turns: 0, last: "" };
 				for await (const ev of events) {
-					if (ev.type === "item.started" && ev.item.type === "mcp_tool_call") {
-						o.onEvent({ type: "tool", name: ev.item.tool, detail: JSON.stringify(ev.item.arguments).slice(0, 300) });
-					} else if (ev.type === "item.completed") {
-						const it = ev.item;
-						if (it.type === "agent_message") {
-							last = it.text;
-							o.onEvent({ type: "text", text: it.text });
-						} else if (it.type === "mcp_tool_call") {
-							o.onEvent({ type: "tool_result", name: it.tool, ok: it.status === "completed", detail: it.error?.message });
-						} else if (it.type === "command_execution") {
-							o.onEvent({ type: "tool", name: "shell (tikai lasīšana)", detail: it.command.slice(0, 300) });
-						} else if (it.type === "error") {
-							o.onEvent({ type: "error", engine: "codex", message: it.message });
-						}
-					} else if (ev.type === "turn.failed") {
-						o.onEvent({ type: "error", engine: "codex", message: ev.error.message });
-						return;
-					} else if (ev.type === "error") {
-						o.onEvent({ type: "error", engine: "codex", message: ev.message });
-						return;
-					}
+					for (const r of codexEvents(ev, st)) o.onEvent(r);
+					// a failed turn or a stream error ends the run; the mapper has already reported it
+					if (ev.type === "turn.failed" || ev.type === "error") return;
 				}
-				o.onEvent({ type: "done", text: last });
+				o.onEvent({ type: "done", text: st.last });
 			} catch (e) {
 				o.onEvent({ type: "error", engine: "codex", message: (e as Error).message });
 			}

@@ -142,11 +142,6 @@ mark { background: color-mix(in srgb, var(--warning) 40%, transparent); color: i
 .activity-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); font-weight: 600; }
 .activity-head .grow { flex: 1; }
 .activity-list { overflow-y: auto; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
-.activity-row { display: grid; grid-template-columns: 44px 14px 1fr; gap: 6px; align-items: start; }
-.activity-row .t { color: var(--ink-2); font-family: var(--mono); }
-.activity-row.error { color: var(--critical); }
-.activity-row.done { color: var(--good); }
-.activity-row .msg { overflow-wrap: anywhere; }
 .activity .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--good); animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .25; } }
 @media (max-width: 1500px) { .activity:not(.closed) { width: 280px; } }
@@ -154,9 +149,6 @@ mark { background: color-mix(in srgb, var(--warning) 40%, transparent); color: i
 /* one calm scrollbar style everywhere, matching the theme; native widgets follow the theme too */
 :root { color-scheme: light dark; }
 * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink-2) 45%, transparent) transparent; }
-.activity-row.answer .act-pre, .activity-row.start .act-pre { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--mono); font-size: 11px; margin: 4px 0 0; color: var(--ink-2); }
-.activity-row details summary { cursor: pointer; }
-.activity-row { grid-template-columns: 40px 14px minmax(0, 1fr); }
 
 /* agent switch (top of every page where the agent works) */
 .head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
@@ -197,3 +189,39 @@ mark { background: color-mix(in srgb, var(--warning) 40%, transparent); color: i
 .doc-edit input, .doc-edit textarea { width: 100%; }
 .doc-table { margin: 8px 0; }
 .doc-table td { height: auto; padding: 4px 8px; border: 1px solid var(--line); vertical-align: top; }
+
+/* agent transcript: runs → turns → steps */
+.activity.wide { width: 560px; }
+.activity-list { gap: 8px; flex: 1; }
+.act-run { border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+.act-run > summary { display: flex; align-items: center; gap: 8px; padding: 7px 10px; cursor: pointer; flex-wrap: wrap; }
+.act-run > summary .title { font-weight: 600; flex: 1 1 140px; min-width: 0; overflow-wrap: anywhere; }
+.act-run .ok { color: var(--good); }
+.act-run .bad { color: var(--critical); }
+.act-task { margin: 0 10px 6px; font-size: 11px; color: var(--ink-2); }
+.act-task summary { cursor: pointer; }
+.act-steps { padding: 2px 10px 8px; display: flex; flex-direction: column; gap: 2px; }
+.act-turn { display: flex; align-items: center; gap: 8px; margin: 8px 0 2px; font-size: 11px; color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; }
+.act-turn::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+.act-sum { display: grid; grid-template-columns: 18px auto minmax(0, 1fr) auto auto; gap: 6px; align-items: baseline; padding: 2px 0; cursor: pointer; list-style: none; }
+.act-sum::-webkit-details-marker { display: none; }
+.act-sum.static { cursor: default; }
+.act-sum .ic { color: var(--ink-2); text-align: center; font-family: var(--mono); }
+.act-sum .kind { color: var(--ink-2); font-size: 11px; min-width: 44px; }
+.act-sum .msg { overflow-wrap: anywhere; }
+.act-sum .t, .act-line .t { color: var(--ink-2); font-family: var(--mono); font-size: 10px; }
+.act-step.thinking .msg { font-style: italic; color: var(--ink-2); }
+.act-step.thinking .ic { color: var(--secret); }
+.act-step.edit .ic { color: var(--accent); }
+.act-step.failed .msg, .act-sum .bad { color: var(--critical); }
+.act-sum .ok { color: var(--good); }
+.act-pre { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--mono); font-size: 11px; margin: 2px 0 6px 24px; padding: 6px 8px; background: var(--bg); border-radius: 4px; color: var(--ink-2); max-height: 260px; overflow: auto; }
+.act-step.thinking .act-pre { font-family: inherit; font-style: italic; }
+.act-line { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 6px; align-items: baseline; padding: 2px 0; }
+.act-line.done { color: var(--good); }
+.act-line.error { color: var(--critical); }
+.act-line .msg { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--mono); font-size: 12px; }
+.act-wait { color: var(--ink-2); font-size: 12px; padding: 4px 0 0 24px; }
+.spin { width: 9px; height: 9px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; align-self: center; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin, .activity .pulse { animation: none; } }

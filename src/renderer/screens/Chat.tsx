@@ -5,7 +5,8 @@ import { AgentSwitch } from "../ui";
 
 type Line = { kind: "user" | "text" | "tool" | "result" | "error" | "done"; text: string };
 
-function toLine(ev: RunEvent): Line {
+/** The chat shows what the agent said and did; its reasoning and turns are in the side panel. */
+function toLine(ev: RunEvent): Line | null {
 	switch (ev.type) {
 		case "text":
 			return { kind: "text", text: ev.text };
@@ -13,6 +14,9 @@ function toLine(ev: RunEvent): Line {
 			return { kind: "tool", text: `→ ${ev.name}${ev.detail ? ` ${ev.detail}` : ""}` };
 		case "tool_result":
 			return { kind: "result", text: `${ev.ok ? "✓" : "✗"} ${ev.name}${ev.detail ? `: ${ev.detail}` : ""}` };
+		case "thinking":
+		case "turn":
+			return null;
 		case "done":
 			return { kind: "done", text: "Pabeigts." };
 		case "error":
@@ -49,7 +53,8 @@ export function Chat({ project, onChanged }: { project: Project; onChanged?: () 
 					const last = l[l.length - 1];
 					// Grok streams a few characters at a time; join consecutive text into one line.
 					if (ev.type === "text" && last?.kind === "text") return [...l.slice(0, -1), { kind: "text", text: last.text + ev.text }];
-					return [...l, toLine(ev)];
+					const line = toLine(ev);
+						return line ? [...l, line] : l;
 				});
 			}),
 		[],
