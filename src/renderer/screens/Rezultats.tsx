@@ -23,7 +23,7 @@ export function Rezultats({ project }: { project: Project; bundle: StateBundle; 
 
 	return (
 		<div className="screen">
-			<ScreenHead
+			<ScreenHead agent
 				title="10. Rezultāts"
 				what="Ko iesniedza, kas notika, un ko no tā paņemt nākamajam konkursam."
 				why="Šeit beidzas konkurss: rezultāts, punkti, mācība un termiņi pēc uzvaras. Pieredzes objektu pievieno reģistram tikai tu pats ar pogu."

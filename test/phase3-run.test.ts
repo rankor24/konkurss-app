@@ -59,7 +59,7 @@ function scripted(): Engine & { calls: string[] } {
 		calls,
 		status: async () => ({ id: "claude", ready: true, reason: "", canLogin: false }),
 		async run(o: RunOptions) {
-			calls.push(o.prompt.includes("LAUKI:") ? "cells" : "sections");
+			calls.push(o.prompt.includes("LAUKI:") ? "cells" : o.prompt.includes("FRAGMENTI") ? "focused" : "sections");
 			let reply: unknown;
 			if (o.prompt.includes("LAUKI:")) {
 				reply = { items: [
@@ -68,7 +68,7 @@ function scripted(): Engine & { calls: string[] } {
 				] };
 			} else {
 				const ids = [...o.prompt.matchAll(/### (s:p\d+)/g)].map((m) => m[1]);
-				reply = { items: ids.map((id, n) => (n % 3 === 2
+				reply = { items: ids.map((id) => (Number(id.slice(3)) % 3 === 2
 					? { id, text: "Izdomāts teksts bez avota", sources: [{ quote: "šī teikuma dokumentā nav", file: "PIP.docx" }], missing: [] }
 					: { id, text: "Tiks nodrošināta atbilstība PIP 5.1.", sources: [{ quote: "Vienotā datu vide jānodrošina visiem projekta dalībniekiem", file: "PIP.docx" }], missing: ["izmantotā VDV platforma"] })) };
 			}
@@ -92,7 +92,7 @@ test("pipeline: inspect → code fill → model fill (grounded) → versioned fi
 	const filled = await F.fillFromTender(deps(project), engine, base, key);
 	assert.ok(filled.ok);
 	if (!filled.ok) return;
-	assert.deepEqual([...new Set(engine.calls)].sort(), ["cells", "sections"]);
+	assert.ok(engine.calls.includes("cells") && engine.calls.includes("sections"));
 	assert.ok(engine.calls.filter((c) => c === "sections").length >= 5, "sections go in batches of 10");
 	const cell = (l: string) => filled.sheet.items.find((i) => i.label === l)!;
 	assert.equal(cell("Projekta nosaukums").status, "source");
@@ -102,7 +102,9 @@ test("pipeline: inspect → code fill → model fill (grounded) → versioned fi
 	const rejected = sections.filter((i) => i.status === "missing" && /citāts dokumentos netika atrasts/.test(i.note ?? ""));
 	console.log(`  ${sections.length} sections: ${ok.length} grounded, ${rejected.length} rejected (made-up source)`);
 	assert.ok(ok.length > 20 && rejected.length > 10);
-	assert.ok(filled.rejected >= rejected.length, "a section rejected in the first pass is asked again in the focused pass, so it can be rejected twice");
+	assert.ok(filled.rejected >= rejected.length, "a section rejected in the first pass may be asked again in the focused pass, so it can be rejected twice");
+	const second = engine.calls.filter((c) => c === "focused").length;
+	assert.ok(second <= sections.length - ok.length, "the focused pass asks once per section that was still empty, never for a filled one");
 	assert.ok(ok.every((i) => i.cites.length > 0 && /^Papildināt: izmantotā VDV platforma/.test(i.note ?? "")));
 
 	// base copy, then a second one: new version number, the first stays

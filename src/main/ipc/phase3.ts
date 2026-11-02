@@ -58,6 +58,7 @@ export function registerPhase3(ctx: AppContext, toolsScript: string): void {
 	// ----- fill -----
 	ipcMain.handle("fill:templates", (_e, projectId: string) => F.templateCandidates(ctx.state(projectId)));
 	ipcMain.handle("fill:valueSheet", (_e, projectId: string, key: string) => ctx.state(projectId).fills[key] ?? null);
+	ipcMain.handle("fill:preview", (_e, projectId: string, key: string) => F.previewTemplate(deps(projectId), key));
 	ipcMain.handle("fill:inspect", (_e, projectId: string, key: string) => F.inspectTemplate(deps(projectId), key));
 	ipcMain.handle("fill:codeFill", (_e, projectId: string, key: string) => F.fillFromCode(deps(projectId), key));
 	ipcMain.handle("fill:bip", async (e, projectId: string, key: string) => {
@@ -65,6 +66,8 @@ export function registerPhase3(ctx: AppContext, toolsScript: string): void {
 		const d = deps(projectId);
 		const code = await F.fillFromCode(d, key);
 		if (!code.ok) return code;
+		// agent switched off: only what the registers and the roles table know is filled
+		if (!ctx.agentOn()) return { ok: true as const, rejected: 0, items: code.sheet.items.length };
 		const r = await F.fillFromTender(d, engine, base, key, (msg) => e.sender.send("task:text", projectId, msg));
 		return r.ok ? { ok: true as const, rejected: r.rejected, items: r.sheet.items.length } : r;
 	});

@@ -4,6 +4,7 @@ import type { Expiry, Registers } from "../shared/registers";
 import type { LeakReport } from "../shared/leaks";
 import type { DepItem } from "../shared/deps";
 import type { Activity } from "../shared/activity";
+import type { PreviewBlock } from "../shared/preview";
 import type { CheckRun, Closeout, Finding, SignatureRow, SignatureVerdict } from "../shared/checks";
 import type { EngineId, EngineStatus, FolderSummary, Project, RunEvent, Settings } from "../shared/types";
 
@@ -113,6 +114,7 @@ export const api = {
 	fill: {
 		templates: (id: string) => call<{ key: string; rel: string; kind: string }[]>("fill:templates", id),
 		sheet: (id: string, key: string) => call<FillSheet | null>("fill:valueSheet", id, key),
+		preview: (id: string, key: string) => call<TaskOutcome<{ blocks: PreviewBlock[] }>>("fill:preview", id, key),
 		inspect: (id: string, key: string) => call<TaskOutcome<{ sheet: FillSheet }>>("fill:inspect", id, key),
 		fillBip: (id: string, key: string) => call<TaskOutcome<{ rejected: number; items: number }>>("fill:bip", id, key),
 		setItem: (id: string, key: string, slotId: string, value: string | null) => call<void>("fill:setItem", id, key, slotId, value),

@@ -1,12 +1,53 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { withHint } from "../shared/hints";
 import { STEP_ICON, type Cited, type StepStatus } from "../shared/state";
+import { api } from "./api";
 
-/** Every screen opens with two lines: what happens here, and why it matters. */
-export function ScreenHead({ title, what, why }: { title: string; what: string; why?: string }) {
+// One switch for the whole app, shared by every page that shows it.
+let agentOn = true;
+let agentLoaded = false;
+const agentSubs = new Set<(on: boolean) => void>();
+const setAgent = (on: boolean) => {
+	agentOn = on;
+	agentSubs.forEach((f) => f(on));
+};
+
+/** Whether the agent (the model) may read and write; the same value on every page. */
+export function useAgentOn(): [boolean, (on: boolean) => void] {
+	const [on, setOn] = useState(agentOn);
+	useEffect(() => {
+		agentSubs.add(setOn);
+		if (!agentLoaded) {
+			agentLoaded = true;
+			api.settings.get().then((s) => setAgent(s.agentOn !== false)).catch(() => (agentLoaded = false));
+		} else setOn(agentOn);
+		return () => void agentSubs.delete(setOn);
+	}, []);
+	return [on, (next) => {
+		setAgent(next);
+		api.settings.save({ agentOn: next }).catch(() => setAgent(!next));
+	}];
+}
+
+export function AgentSwitch() {
+	const [on, set] = useAgentOn();
+	return (
+		<label className={`agent-switch ${on ? "on" : "off"}`} title={on ? "Aģents lasa dokumentus un raksta tekstus. Izslēdz, ja gribi tikai reģistrus un ierakstus ar roku." : "Aģents ir izslēgts: app neko nelasa un neraksta ar modeli."}>
+			<input type="checkbox" role="switch" checked={on} onChange={(e) => set(e.target.checked)} />
+			<span className="track" aria-hidden="true"><span className="knob" /></span>
+			<span>Aģents: {on ? "ieslēgts" : "izslēgts"}</span>
+		</label>
+	);
+}
+
+/** Every screen opens with two lines: what happens here, and why it matters. `agent` adds the switch on screens where the agent works. */
+export function ScreenHead({ title, what, why, agent }: { title: string; what: string; why?: string; agent?: boolean }) {
 	return (
 		<div className="screen-head">
-			<h1>{title}</h1>
+			<div className="head-row">
+				<h1>{title}</h1>
+				{agent && <AgentSwitch />}
+			</div>
 			<div className="intro">
 				<p>{what}</p>
 				{why && <p>{why}</p>}

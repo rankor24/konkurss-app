@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ENGINE_LABELS, type EngineId, type EngineStatus, type Project, type RunEvent } from "../../shared/types";
 import { api, errorText } from "../api";
+import { AgentSwitch } from "../ui";
 
 type Line = { kind: "user" | "text" | "tool" | "result" | "error" | "done"; text: string };
 
@@ -78,7 +79,7 @@ export function Chat({ project, onChanged }: { project: Project; onChanged?: () 
 
 	return (
 		<div className="card">
-			<h2>Aģents</h2>
+			<div className="head-row"><h2>Aģents</h2><AgentSwitch /></div>
 			<div className="small">Aģents ne tikai atbild, bet arī <b>aizpilda</b>: veidlapu laukus (BIP u.c.), termiņu un lomas. Ieraksta tikai to, ko var citēt no konkursa dokumentiem; ko tu pats esi ierakstījis, to neaizstāj. Word/Excel failus izveido tu ar pogu 6. solī.</div>
 			<div className="row">
 				<select value={engine} onChange={(e) => setEngine(e.target.value as EngineId)} aria-label="Aģents">

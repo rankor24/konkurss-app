@@ -52,6 +52,8 @@ export interface Settings {
 	engineForTasks: EngineId;
 	models: Partial<Record<EngineId, string>>;
 	hasClaudeKey: boolean;
+	/** the "Aģents" switch on every page; anything but false means on */
+	agentOn?: boolean;
 	/** extra names of other tenders to look for in finished documents */
 	foreignTerms?: string[];
 }

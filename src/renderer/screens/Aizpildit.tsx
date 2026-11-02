@@ -3,7 +3,9 @@ import type { FillSheet, SheetItem } from "../../shared/state";
 import type { LeakReport } from "../../shared/leaks";
 import type { Project } from "../../shared/types";
 import { api, type Generated, type MatricaResult, type StateBundle } from "../api";
-import { Banner, ScreenHead, useAction } from "../ui";
+import type { PreviewBlock } from "../../shared/preview";
+import { Banner, ScreenHead, useAction, useAgentOn } from "../ui";
+import { DocPreview, isOpenItem } from "./DocPreview";
 import { FormsV1, TechV1 } from "./FormsV1";
 
 const STATUS: Record<SheetItem["status"], { icon: string; label: string; color: string }> = {
@@ -66,6 +68,11 @@ export function Aizpildit({ project, bundle, reload }: { project: Project; bundl
 	const [key, setKey] = useState("");
 	const [sheet, setSheet] = useState<FillSheet | null>(null);
 	const [onlyOpen, setOnlyOpen] = useState(false);
+	const [view, setView] = useState<"doc" | "list">("doc");
+	const [blocks, setBlocks] = useState<PreviewBlock[] | null>(null);
+	const [previewError, setPreviewError] = useState("");
+	const [cursor, setCursor] = useState(0);
+	const [agentOn] = useAgentOn();
 	const [progress, setProgress] = useState("");
 	const [made, setMade] = useState<Generated[]>([]);
 	const [matrica, setMatrica] = useState<(MatricaResult & { builder: string })[]>([]);
@@ -85,7 +92,29 @@ export function Aizpildit({ project, bundle, reload }: { project: Project; bundl
 	useEffect(() => window.konkurss.on("task:text", (pid, msg) => pid === id && setProgress(String(msg))), [id]);
 
 	const isMatrica = templates.find((t) => t.key === key)?.kind === "matrica";
-	const open = useMemo(() => sheet?.items.filter((i) => i.kind !== "delete" && (i.status === "missing" || /^Papildin/.test(i.note ?? ""))).length ?? 0, [sheet]);
+	// the document layout only changes when the template is inspected again; values come from the sheet
+	const inspectedAt = sheet?.inspectedAt;
+	useEffect(() => {
+		setBlocks(null);
+		setPreviewError("");
+		if (!key || isMatrica || !inspectedAt) return;
+		let live = true;
+		api.fill.preview(id, key).then((r) => live && (r.ok ? setBlocks(r.blocks) : setPreviewError(r.error)));
+		return () => void (live = false);
+	}, [id, key, isMatrica, inspectedAt]);
+	const open = useMemo(() => sheet?.items.filter(isOpenItem).length ?? 0, [sheet]);
+	const byId = useMemo(() => new Map((sheet?.items ?? []).map((i) => [i.slotId, i])), [sheet]);
+	/** open fields in the order they stand in the document, for "next empty place" */
+	const openInOrder = useMemo(() => {
+		const order = (blocks ?? []).flatMap((b) => (b.kind === "slot" ? [b.slotId] : b.kind === "table" ? b.rows.flat().flatMap((c) => (c.slotId ? [c.slotId] : [])) : []));
+		return order.filter((s) => { const i = byId.get(s); return i && isOpenItem(i); });
+	}, [blocks, byId]);
+	const nextOpen = () => {
+		if (openInOrder.length === 0) return;
+		const at = cursor % openInOrder.length;
+		document.getElementById(`slot-${openInOrder[at]}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+		setCursor(at + 1);
+	};
 	const refresh = async () => setSheet(await api.fill.sheet(id, key));
 	const generateBase = () =>
 		act.run("gen", async () => {
@@ -99,11 +128,13 @@ export function Aizpildit({ project, bundle, reload }: { project: Project; bundl
 			if (r.ok) setMade((m) => [...r.copies, ...m]);
 			return r;
 		}, refresh);
-	const items = (sheet?.items ?? []).filter((i) => i.kind !== "delete" && (!onlyOpen || i.status === "missing" || /^Papildin/.test(i.note ?? "")));
+	const items = (sheet?.items ?? []).filter((i) => i.kind !== "delete" && (!onlyOpen || isOpenItem(i)));
+	const save = (slotId: string, value: string | null) => api.fill.setItem(id, key, slotId, value).then(refresh);
 
 	return (
 		<div className="screen">
 			<ScreenHead
+				agent
 				title="6. Aizpildīt"
 				what="App saliek katram dokumentam sarakstu, kas kur jāieraksta un no kurienes tas nāk. Kur formāts ļauj, app aizpilda failu pati."
 				why="Oriģinālās veidlapas netiek mainītas. Ja kāda vieta nav zināma, app to atstāj tukšu un pasaka — tā neizdomā datus."
@@ -129,19 +160,36 @@ export function Aizpildit({ project, bundle, reload }: { project: Project; bundl
 						{sheet && <span className="small muted">{sheet.items.filter((i) => i.kind !== "delete").length} lauki · trūkst vai jāpapildina: <strong>{open}</strong></span>}
 					</div>
 					{!sheet && <div className="muted">Vispirms pārskati veidni — app atradīs laukus un sadaļas, ko aizpildīt.</div>}
+					{!agentOn && <Banner>Aģents ir izslēgts — „Aizpildīt” aizpildīs tikai to, ko zina reģistri un lomu tabula. Tekstus no konkursa dokumentiem raksta aģents.</Banner>}
 					{sheet && (
 						<>
-							<label className="row small"><input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} /> rādīt tikai trūkstošos</label>
-							<div className="table-wrap">
-								<table>
-									<thead><tr><th /><th>Kas jāieraksta</th><th>Kas tur būs</th></tr></thead>
-									<tbody>
-										{items.map((it) => (
-											<Row key={it.slotId} item={it} onSave={(value) => api.fill.setItem(id, key, it.slotId, value).then(refresh)} />
-										))}
-									</tbody>
-								</table>
+							<div className="row">
+								<div className="seg" role="tablist" aria-label="Skats">
+									<button role="tab" aria-selected={view === "doc"} className={view === "doc" ? "on" : ""} onClick={() => setView("doc")}>Dokuments</button>
+									<button role="tab" aria-selected={view === "list"} className={view === "list" ? "on" : ""} onClick={() => setView("list")}>Saraksts</button>
+								</div>
+								{view === "doc" && <button disabled={openInOrder.length === 0} onClick={nextOpen}>Nākamā tukšā vieta ({openInOrder.length})</button>}
+								{view === "list" && <label className="row small"><input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} /> rādīt tikai trūkstošos</label>}
 							</div>
+							{view === "doc" && (
+								<>
+									{previewError && <Banner kind="critical">{previewError}</Banner>}
+									{!previewError && !blocks && <div className="muted">Atver dokumentu…</div>}
+									{blocks && <DocPreview blocks={blocks} items={byId} onSave={save} />}
+								</>
+							)}
+							{view === "list" && (
+								<div className="table-wrap">
+									<table>
+										<thead><tr><th /><th>Kas jāieraksta</th><th>Kas tur būs</th></tr></thead>
+										<tbody>
+											{items.map((it) => (
+												<Row key={it.slotId} item={it} onSave={(value) => save(it.slotId, value)} />
+											))}
+										</tbody>
+									</table>
+								</div>
+							)}
 							{open > 0 && <Banner>{open} vietas bez datiem. Failu var izveidot jau tagad — tukšās vietas tajā būs sarkanas ar uzrakstu [aizpildīt].</Banner>}
 							<div className="row">
 								<button className="primary" disabled={!!act.busy} onClick={generateBase}>

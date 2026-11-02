@@ -20,7 +20,7 @@ export function Varam({ project, bundle, reload }: { project: Project; bundle: S
 		});
 	}, [project.id, hasReqs, bundle.state.requirements]);
 
-	const head = <ScreenHead title="4. Vai varam pieteikties" what="Pirms sāc aizpildīt, app salīdzina konkursa prasības ar mūsu reģistriem un pasaka, vai vispār varam kvalificēties un cik punktus reāli varam iegūt." />;
+	const head = <ScreenHead agent title="4. Vai varam pieteikties" what="Pirms sāc aizpildīt, app salīdzina konkursa prasības ar mūsu reģistriem un pasaka, vai vispār varam kvalificēties un cik punktus reāli varam iegūt." />;
 	if (!hasReqs) return <div className="screen">{head}<Banner>Vispirms 3. solī izlasi un pārbaudi speciālistus un vērtēšanas kritērijus — no tiem tiek rēķināts šis atzinums.</Banner></div>;
 	if (!v) return <div className="screen">{head}Rēķina…</div>;
 	const f = v.feasibility;

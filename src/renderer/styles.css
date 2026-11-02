@@ -157,3 +157,43 @@ mark { background: color-mix(in srgb, var(--warning) 40%, transparent); color: i
 .activity-row.answer .act-pre, .activity-row.start .act-pre { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--mono); font-size: 11px; margin: 4px 0 0; color: var(--ink-2); }
 .activity-row details summary { cursor: pointer; }
 .activity-row { grid-template-columns: 40px 14px minmax(0, 1fr); }
+
+/* agent switch (top of every page where the agent works) */
+.head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.head-row h1 { margin: 0; }
+.agent-switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: var(--ink-2); user-select: none; }
+.agent-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.agent-switch .track { width: 30px; height: 16px; border-radius: 8px; background: var(--line); position: relative; transition: background .15s; }
+.agent-switch .knob { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--panel); transition: transform .15s; }
+.agent-switch.on { color: var(--ink); }
+.agent-switch.on .track { background: var(--good); }
+.agent-switch.on .knob { transform: translateX(14px); }
+.agent-switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* segmented control */
+.seg { display: inline-flex; }
+.seg button { border-radius: 0; margin-left: -1px; }
+.seg button:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
+.seg button:last-child { border-radius: 0 4px 4px 0; }
+.seg button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); position: relative; }
+
+/* the template as a document, fields in place */
+.doc { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 20px 28px 28px; max-width: 920px; line-height: 1.5; }
+.doc-h { font-weight: 600; margin: 18px 0 4px; }
+.doc-h1 { font-size: 17px; border-bottom: 1px solid var(--line); padding-bottom: 4px; margin-top: 26px; }
+.doc-h2 { font-size: 15px; }
+.doc-h3, .doc-h4 { font-size: 13px; color: var(--ink-2); }
+.doc-p { margin: 6px 0; }
+.doc-slot { border-left: 3px solid var(--line); padding: 4px 10px; margin: 6px 0; }
+.doc-slot.s-source { border-color: var(--good); }
+.doc-slot.s-manual { border-color: var(--accent); }
+.doc-slot.s-missing, .doc-slot.open { border-color: var(--warning); }
+.doc-slot.inline { margin: 0; padding: 2px 6px; }
+.doc-value { white-space: pre-wrap; }
+.doc-instruction { font-style: italic; color: var(--ink-2); margin-bottom: 4px; white-space: pre-wrap; }
+.doc-meta { display: flex; gap: 10px; align-items: center; }
+.doc-cite summary { cursor: pointer; font-size: 11px; color: var(--model); }
+.doc-edit { margin: 6px 0; display: flex; flex-direction: column; gap: 6px; }
+.doc-edit input, .doc-edit textarea { width: 100%; }
+.doc-table { margin: 8px 0; }
+.doc-table td { height: auto; padding: 4px 8px; border: 1px solid var(--line); vertical-align: top; }

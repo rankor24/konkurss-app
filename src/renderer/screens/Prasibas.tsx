@@ -53,7 +53,7 @@ export function Prasibas({ project, bundle, reload }: { project: Project; bundle
 
 	return (
 		<div className="screen">
-			<ScreenHead
+			<ScreenHead agent
 				title="3. Ko konkurss prasa"
 				what="App izlasa nolikumu un piedāvā, ko tas prasa. Pie katras vērtības redzams teikums, no kura tā nolasīta — izlasi un apstiprini."
 				why="Visi turpmākie soļi balstās uz šo."

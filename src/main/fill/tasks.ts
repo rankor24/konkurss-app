@@ -51,24 +51,9 @@ export const SECTIONS_INSTRUCTIONS = [
 // ---------- second pass: sections the first pass left empty ----------
 export const FOCUSED_INSTRUCTIONS = [
 	SECTIONS_INSTRUCTIONS,
-	"ŠĪS SADAĻAS iepriekšējā reizē palika tukšas. Zemāk doti dokumentu FRAGMENTI, kuros minēta katras sadaļas tēma — tie ir atlasīti tieši šīm sadaļām.",
+	"ŠĪ SADAĻA iepriekšējā reizē palika tukša. Zemāk doti dokumentu FRAGMENTI, kuros minēta tās tēma — tie ir atlasīti tieši šai sadaļai (virsraksts dokumentā un teksts zem tā).",
 	'Atrodi tajos attiecīgās prasības un uzraksti apņemšanos tās ievērot, atsaucoties uz dokumenta punktu (piem. „Tiks nodrošināta atbilstība PIP 7.3. punktam: …”). "text": null liec TIKAI tad, ja fragmentos par šo tēmu tiešām nav nekā.',
 ].join("\n");
-
-/** Words of the section's own heading (last path element) that identify its topic: the two longest, as 8-letter stems. */
-export function topicStems(item: Pick<SheetItem, "heading" | "label">): string[] {
-	const last = (item.heading || item.label).split("›").pop() ?? "";
-	const words = last.toLowerCase().split(/[^\p{L}]+/u).filter((w) => w.length >= 6);
-	return [...new Set(words.sort((a, b) => b.length - a.length).slice(0, 2).map((w) => w.slice(0, 8)))];
-}
-
-/** The passages of each document around the topics of these sections, so the model reads a few thousand characters, not a million. */
-export function focusedDocs(items: Pick<SheetItem, "heading" | "label">[], docs: DocInput[], excerptFn: (doc: DocInput, re: RegExp) => DocInput): DocInput[] {
-	const stems = [...new Set(items.flatMap(topicStems))];
-	if (stems.length === 0) return docs;
-	const re = new RegExp(stems.join("|"), "i");
-	return docs.map((d) => excerptFn(d, re)).filter((d) => d.text.trim().length > 0);
-}
 
 export function sectionsPrompt(items: SheetItem[]): string {
 	return items.map((i) => `### ${i.slotId}\nVirsraksts: ${i.heading || i.label}\nPamācība: ${(i.instruction ?? "").slice(0, 600)}`).join("\n\n");

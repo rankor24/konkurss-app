@@ -32,7 +32,7 @@ export function Versija({ project, bundle, reload }: { project: Project; bundle:
 
 	return (
 		<div className="screen">
-			<ScreenHead
+			<ScreenHead agent
 				title="2. Kura versija spēkā"
 				what="Nolikumu drīkst grozīt pēc publicēšanas, un komisijas atbildes var mainīt vērtēšanas kritērijus."
 				why="Ja strādāsi ar veco redakciju, vari izpildīt prasību, kas vairs nav spēkā."

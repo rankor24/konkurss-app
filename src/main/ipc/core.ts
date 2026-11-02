@@ -3,7 +3,7 @@ import { BrowserWindow, dialog, ipcMain, shell } from "electron";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { EngineId, RunEvent, Settings, Variant } from "../../shared/types.js";
-import type { AppContext } from "../context.js";
+import { AGENT_OFF, type AppContext } from "../context.js";
 import { summarizeFolder } from "../store.js";
 import { buildPrompt } from "../engines/index.js";
 
@@ -47,7 +47,8 @@ export function registerCore(ctx: AppContext): void {
 			if (!e.sender.isDestroyed()) e.sender.send("agent:event", req.runId, ev);
 		};
 		try {
-			await ctx.engines[req.engine].run({ ...ctx.runBase(project, req.engine, abort.signal), prompt: buildPrompt(project, req.text), onEvent: send });
+			if (!ctx.agentOn()) send({ type: "error", engine: req.engine, message: AGENT_OFF });
+			else await ctx.engines[req.engine].run({ ...ctx.runBase(project, req.engine, abort.signal), prompt: buildPrompt(project, req.text), onEvent: send });
 		} finally {
 			running.delete(req.runId);
 		}

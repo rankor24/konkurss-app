@@ -22,7 +22,7 @@ export function Parbaude({ project, bundle, reload, go }: { project: Project; bu
 
 	return (
 		<div className="screen">
-			<ScreenHead
+			<ScreenHead agent
 				title="8. Pārbaude"
 				what="Pārbaudes pirms iesniegšanas. Tās atrod tieši tās kļūdas, kas iepriekš maksājušas punktus: nesakritīgas lomas, aizmirstus norādījumus, cita konkursa datus."
 				why="Pārbaude tikai nolasa — neko dokumentos nemaina. Katra atrasta lieta pasaka, ko tā nozīmē un kur to labot."

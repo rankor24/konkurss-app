@@ -8,13 +8,16 @@ import type { Engine, RunOptions } from "../engines/types.js";
 import { loadState, updateState } from "../project-state.js";
 import { fillDocx, fillXlsx, inspectDocx, inspectXlsx, type ToolsConfig } from "../pytools.js";
 import type { Registers } from "../registers/registers.js";
-import { docsByKind, excerpt } from "../tasks/docs.js";
+import { docsByKind } from "../tasks/docs.js";
 import { runModelTask } from "../tasks/runner.js";
 import { inForceNolikums } from "../tasks/phase2-run.js";
 import { checkDocument, foreignTerms, otherBuilderTerms, type LeakReport } from "./leaks.js";
 import { groundLod, LOD_HINT, LOD_INSTRUCTIONS, lodSchema, matrixLayout, planAuthors, planLods, type LodProposal } from "./matrica.js";
 import { codeFill, LEGEND, mergeSheets, newSheet, openItems, toEdits } from "./sheet.js";
-import { applyCells, applySections, CELLS_HINT, CELLS_INSTRUCTIONS, cellsPrompt, cellsSchema, chunk, FOCUSED_INSTRUCTIONS, focusedDocs, SECTIONS_HINT, SECTIONS_INSTRUCTIONS, sectionsPrompt, sectionsSchema } from "./tasks.js";
+import { applyCells, applySections, CELLS_HINT, CELLS_INSTRUCTIONS, cellsPrompt, cellsSchema, chunk, FOCUSED_INSTRUCTIONS, SECTIONS_HINT, SECTIONS_INSTRUCTIONS, sectionsPrompt, sectionsSchema } from "./tasks.js";
+import { makeRetriever, type RankedDoc } from "./retrieve.js";
+import { buildPreview } from "./preview.js";
+import type { PreviewBlock } from "../../shared/preview.js";
 
 type Base = Omit<RunOptions, "prompt" | "onEvent">;
 export type Outcome<X = object> = ({ ok: true } & X) | { ok: false; error: string };
@@ -62,6 +65,17 @@ export async function inspectTemplate(d: RunDeps, key: string): Promise<Outcome<
 	return { ok: true, sheet };
 }
 
+/** The template as a document top to bottom, for the preview on screen 6. */
+export async function previewTemplate(d: RunDeps, key: string): Promise<Outcome<{ blocks: PreviewBlock[] }>> {
+	const s = loadState(d.project.outputDir);
+	const path = templatePath(d.project, s, key);
+	if (!path) return { ok: false, error: "Veidnes fails nav atrasts." };
+	if (!/\.docx$/i.test(path)) return { ok: false, error: "Priekšskatījums ir tikai Word veidnēm." };
+	const sheet = s.fills[key];
+	if (!sheet) return { ok: false, error: "Vispirms pārskati veidni." };
+	return { ok: true, blocks: buildPreview(await inspectDocx(d.tools, path), sheet) };
+}
+
 const variantOf = (s: ProjectState): Variant | null => s.variant?.value ?? null;
 
 /** Code-fills roles and bidder cells. Safe to repeat; a person's edits are kept. */
@@ -78,6 +92,12 @@ export async function fillFromCode(d: RunDeps, key: string, builder?: string): P
 
 const FILL_DOCS_CELLS = ["tehniska_specifikacija", "pu", "pip"] as const;
 const FILL_DOCS_SECTIONS = ["pip", "paraugmodelu_prasibas", "tehniska_specifikacija", "pu", "grozijumi", "qa"] as const;
+/** The client's BIM requirements say what a BIP section must contain; a Q&A letter only adjusts them. */
+const SECTION_DOC_WEIGHT: Record<(typeof FILL_DOCS_SECTIONS)[number], number> = { pip: 1.6, paraugmodelu_prasibas: 1.3, tehniska_specifikacija: 1, pu: 1, grozijumi: 1, qa: 1 };
+
+/** The documents sections are written from, each marked with how much a hit in it counts. */
+export const rankedSectionDocs = (p: Project, s: ProjectState): RankedDoc[] =>
+	FILL_DOCS_SECTIONS.flatMap((k) => docsByKind(p, s, [k]).map((doc) => ({ ...doc, weight: SECTION_DOC_WEIGHT[k] })));
 
 /** Model step: project-info cells and instruction sections from the tender documents, each with a verified quote. */
 export async function fillFromTender(d: RunDeps, engine: Engine, base: Base, key: string, onProgress?: (msg: string) => void): Promise<Outcome<{ sheet: FillSheet; rejected: number }>> {
@@ -141,19 +161,27 @@ ${sectionsPrompt(batch)}`, schemaHint: SECTIONS_HINT, schema: sectionsSchema, do
 		commit(a.items);
 	}
 
-	// Second pass: what is still empty gets only the passages about its own topic. A million characters of documents make a
-	// model answer "nothing found"; a few thousand about "Garantijas laiks" make it find the clause.
+	// Second pass, one section at a time: what is still empty gets only the passages about its own topic (see retrieve.ts).
+	// A million characters of documents make a model answer "nothing found"; a few thousand about "Garantijas laiks" make it find the clause.
 	const still = loadState(d.project.outputDir).fills[key].items.filter((i) => i.kind === "section" && i.status === "missing" && i.by === null);
-	const retry = chunk(still, 5);
-	for (const [n, batch] of retry.entries()) {
-		onProgress?.(`Atkārtota meklēšana ${n + 1}/${retry.length} (${batch.length} sadaļas)…`);
-		const docs = focusedDocs(batch, secDocs, (doc, re) => excerpt(doc, re, { head: 0, ctx: 10, maxChars: 20_000 }));
-		if (docs.length === 0) continue;
-		const r = await runModelTask({ engine, base, instructions: `${FOCUSED_INSTRUCTIONS}\n\nSADAĻAS:\n${sectionsPrompt(batch)}`, schemaHint: SECTIONS_HINT, schema: sectionsSchema, docs });
-		if (!r.ok) return fail(r.error, "Atkārtotā meklēšana nav pabeigta — spied „Aizpildīt no nolikuma” vēlreiz, jau aizpildītais netiks pārrakstīts.");
-		const a = applySections(batch, r.data, docs);
-		rejected += a.rejected;
-		commit(a.items);
+	if (still.length) {
+		const retrieve = makeRetriever(rankedSectionDocs(d.project, s));
+		for (const [n, item] of still.entries()) {
+			onProgress?.(`Meklēju „${item.label}” (${n + 1}/${still.length})…`);
+			const found = retrieve(item);
+			if (found.docs.length === 0) {
+				commit([{ ...item, note: item.note ?? "Dokumentos nav neviena fragmenta par šo tēmu." }]);
+				continue;
+			}
+			const r = await runModelTask({ engine, base, instructions: `${FOCUSED_INSTRUCTIONS}\n\nSADAĻAS:\n${sectionsPrompt([item])}`, schemaHint: SECTIONS_HINT, schema: sectionsSchema, docs: found.docs });
+			if (!r.ok) return fail(r.error, "Atkārtotā meklēšana nav pabeigta — spied „Aizpildīt” vēlreiz, jau aizpildītais netiks pārrakstīts.");
+			const a = applySections([item], r.data, found.docs);
+			rejected += a.rejected;
+			const [done] = a.items;
+			// say why a section stayed empty instead of leaving the bare instruction
+			if (done.status === "missing" && !done.note) done.note = `Meklēts ${found.passages} fragmentos no ${found.docs.length} dokumentiem (${found.docs.map((x) => x.file.split(/[\\/]/).pop()).join("; ")}) — aģents tiešu prasību neatrada.`;
+			commit([done]);
+		}
 	}
 
 	const sheet = loadState(d.project.outputDir).fills[key];

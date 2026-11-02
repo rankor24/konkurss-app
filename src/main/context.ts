@@ -9,6 +9,9 @@ import { pyConfigFromEnv, type PyConfig } from "../mcp/python.js";
 import { loadState } from "./project-state.js";
 import { withActivity } from "./activity.js";
 
+/** Shown wherever a model task is refused because the switch is off. */
+export const AGENT_OFF = "Aģents ir izslēgts (slēdzis „Aģents” lapas augšā). Ieslēdz to, lai app lasītu dokumentus un rakstītu tekstus; ar izslēgtu aģentu darbojas tikai reģistri un lomu tabula.";
+
 export interface Paths {
 	pluginDir: string;
 	skillsDir: string;
@@ -40,9 +43,19 @@ export class AppContext {
 		return loadState(this.project(id).outputDir);
 	}
 
-	/** Engine chosen for model tasks in Iestatījumi. */
+	/** The "Aģents" switch at the top of every page: off means no model reads or writes anything. */
+	agentOn(): boolean {
+		return this.store.settings().agentOn !== false;
+	}
+
+	/** Engine chosen for model tasks in Iestatījumi. With the agent switched off it answers every task with a plain explanation. */
 	taskEngine(): Engine {
-		return withActivity(this.engines[this.store.settings().engineForTasks], (a) => this.emit("activity", a), (dir) => this.runDirs.get(dir) ?? null);
+		const id = this.store.settings().engineForTasks;
+		if (!this.agentOn()) {
+			const inner = this.engines[id];
+			return { id, status: () => inner.status(), run: async (o) => o.onEvent({ type: "error", engine: id, message: AGENT_OFF }) };
+		}
+		return withActivity(this.engines[id], (a) => this.emit("activity", a), (dir) => this.runDirs.get(dir) ?? null);
 	}
 
 	runBase(project: Project, engine: EngineId, signal: AbortSignal): Omit<RunOptions, "prompt" | "onEvent"> {
