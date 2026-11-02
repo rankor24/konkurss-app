@@ -1,28 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { ENGINE_LABELS, type EngineId, type EngineStatus, type Project, type RunEvent } from "../../shared/types";
+import { ENGINE_LABELS, type EngineId, type EngineStatus, type Project } from "../../shared/types";
 import { api, errorText } from "../api";
 import { AgentSwitch } from "../ui";
-
-type Line = { kind: "user" | "text" | "tool" | "result" | "error" | "done"; text: string };
-
-/** The chat shows what the agent said and did; its reasoning and turns are in the side panel. */
-function toLine(ev: RunEvent): Line | null {
-	switch (ev.type) {
-		case "text":
-			return { kind: "text", text: ev.text };
-		case "tool":
-			return { kind: "tool", text: `→ ${ev.name}${ev.detail ? ` ${ev.detail}` : ""}` };
-		case "tool_result":
-			return { kind: "result", text: `${ev.ok ? "✓" : "✗"} ${ev.name}${ev.detail ? `: ${ev.detail}` : ""}` };
-		case "thinking":
-		case "turn":
-			return null;
-		case "done":
-			return { kind: "done", text: "Pabeigts." };
-		case "error":
-			return { kind: "error", text: `Kļūda (${ev.engine}): ${ev.message}` };
-	}
-}
+import { addEvent, type Block } from "../transcript";
+import { Transcript } from "./Transcript";
 
 /** Free-form question to the agent about this tender. Every answer should cite or say „dokumentos nav”. */
 const EXAMPLES = [
@@ -36,7 +17,7 @@ export function Chat({ project, onChanged }: { project: Project; onChanged?: () 
 	const [statuses, setStatuses] = useState<EngineStatus[]>([]);
 	const [engine, setEngine] = useState<EngineId>("claude");
 	const [text, setText] = useState("");
-	const [log, setLog] = useState<Line[]>([]);
+	const [log, setLog] = useState<Block[]>([]);
 	const [runId, setRunId] = useState<string | null>(null);
 	const runRef = useRef<string | null>(null);
 	const logRef = useRef<HTMLDivElement>(null);
@@ -49,17 +30,15 @@ export function Chat({ project, onChanged }: { project: Project; onChanged?: () 
 		() =>
 			api.agent.onEvent((id, ev) => {
 				if (id !== runRef.current) return;
-				setLog((l) => {
-					const last = l[l.length - 1];
-					// Grok streams a few characters at a time; join consecutive text into one line.
-					if (ev.type === "text" && last?.kind === "text") return [...l.slice(0, -1), { kind: "text", text: last.text + ev.text }];
-					const line = toLine(ev);
-						return line ? [...l, line] : l;
-				});
+				setLog((l) => addEvent(l, ev));
 			}),
 		[],
 	);
-	useEffect(() => void logRef.current?.scrollTo({ top: logRef.current.scrollHeight }), [log]);
+	// follow the newest step unless the person has scrolled up to read
+	const follow = useRef(true);
+	useEffect(() => {
+		if (follow.current) logRef.current?.scrollTo({ top: logRef.current.scrollHeight });
+	}, [log]);
 
 	const ready = statuses.find((s) => s.id === engine)?.ready ?? false;
 
@@ -67,13 +46,14 @@ export function Chat({ project, onChanged }: { project: Project; onChanged?: () 
 		if (!prompt.trim() || runId) return;
 		const id = crypto.randomUUID();
 		runRef.current = id;
+		follow.current = true;
 		setRunId(id);
-		setLog((l) => [...l, { kind: "user", text: prompt }]);
+		setLog((l) => [...l, { k: "user", text: prompt }]);
 		setText("");
 		try {
 			await api.agent.run({ runId: id, projectId: project.id, engine, text: prompt });
 		} catch (e) {
-			setLog((l) => [...l, { kind: "error", text: errorText(e) }]);
+			setLog((l) => [...l, { k: "error", text: errorText(e) }]);
 		} finally {
 			runRef.current = null;
 			setRunId(null);
@@ -94,15 +74,21 @@ export function Chat({ project, onChanged }: { project: Project; onChanged?: () 
 				</select>
 				{!ready && <span className="small" style={{ color: "var(--warning)" }}>{statuses.find((s) => s.id === engine)?.reason}</span>}
 			</div>
-			<div className="log" ref={logRef}>
+			<div
+					className="log"
+					ref={logRef}
+					onScroll={(e) => {
+						const el = e.currentTarget;
+						follow.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+					}}
+				>
 				{log.length === 0 && (
 					<div className="muted small">
 						<div>Pasaki, ko darīt, vai jautā. Piemēri (spied, lai ievietotu):</div>
 						{EXAMPLES.map((x) => <div key={x}><button className="link" onClick={() => setText(x)}>{x}</button></div>)}
 					</div>
 				)}
-				{log.map((l, i) => <div key={i} className={`line ${l.kind}`}>{l.text}</div>)}
-				{runId && <div className="line tool">… strādā</div>}
+				<Transcript blocks={log} active={!!runId} engine={ENGINE_LABELS[engine]} />
 			</div>
 			<div className="row">
 				<textarea className="grow" rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder="Ko darīt? Piem.: aizpildi sadaļu „Garantijas laiks” no PIP / kur rakstīts, kāds LOD jāiesniedz KC posmā?" />

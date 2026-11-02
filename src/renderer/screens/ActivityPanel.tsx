@@ -77,6 +77,13 @@ export function Run({ lines, latest }: { lines: Activity[]; latest: boolean }) {
 	const running = end.kind !== "done" && end.kind !== "error";
 	const steps = lines.filter((l) => l.kind === "tool").length;
 	const mark = running ? <span className="pulse" /> : end.kind === "done" ? <span className="ok">✓</span> : <span className="bad">✗</span>;
+	// the steps of a run scroll on their own; the one being written follows its newest step unless the person scrolled up
+	const box = useRef<HTMLDivElement>(null);
+	const follow = useRef(true);
+	useEffect(() => {
+		const el = box.current;
+		if (el && running && follow.current) el.scrollTo({ top: el.scrollHeight });
+	}, [lines.length, end.detail?.length, running]);
 	return (
 		<details className="act-run" open={latest}>
 			<summary>
@@ -90,7 +97,14 @@ export function Run({ lines, latest }: { lines: Activity[]; latest: boolean }) {
 					<pre className="act-pre">{start.detail}</pre>
 				</details>
 			)}
-			<div className="act-steps">
+			<div
+				className="act-steps"
+				ref={box}
+				onScroll={(e) => {
+					const el = e.currentTarget;
+					follow.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+				}}
+			>
 				{lines.map((l, i) => <Step key={`${l.step ?? l.kind}-${i}`} a={l} latest={running && i === lines.length - 1} />)}
 				{running && lines.length === 1 && <div className="act-wait">Aģents domā un lasa dokumentus…</div>}
 			</div>
