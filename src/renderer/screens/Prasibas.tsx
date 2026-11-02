@@ -3,6 +3,7 @@ import { emptyCited, type BlockId, type Cited, type Criterion, type ExperienceRe
 import type { Project } from "../../shared/types";
 import { api, type StateBundle } from "../api";
 import { Banner, EditableCited, ScreenHead, useAction } from "../ui";
+import { ExtraSources } from "./Sources";
 
 const num = (raw: string): number | null => {
 	const n = Number(raw.replace(/\s/g, "").replace(",", "."));
@@ -58,6 +59,7 @@ export function Prasibas({ project, bundle, reload }: { project: Project; bundle
 				what="App izlasa nolikumu un piedāvā, ko tas prasa. Pie katras vērtības redzams teikums, no kura tā nolasīta — izlasi un apstiprini."
 				why="Visi turpmākie soļi balstās uz šo."
 			/>
+		<ExtraSources project={project} bundle={bundle} reload={reload} page="prasibas" />
 			{act.error && <Banner kind="critical">{act.error}</Banner>}
 			<div className="row">
 				<button disabled={!!act.busy} onClick={() => act.run("second", () => api.req.secondPass(id), reload)}>

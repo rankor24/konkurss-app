@@ -3,6 +3,7 @@ import { emptyCloseout, type Closeout } from "../../shared/checks";
 import type { Project } from "../../shared/types";
 import { api, type StateBundle } from "../api";
 import { Banner, ScreenHead, useAction } from "../ui";
+import { ExtraSources } from "./Sources";
 
 const RESULTS: { id: NonNullable<Closeout["result"]>; label: string }[] = [
 	{ id: "gaida", label: "Gaidām rezultātu" },
@@ -12,7 +13,7 @@ const RESULTS: { id: NonNullable<Closeout["result"]>; label: string }[] = [
 ];
 
 /** 10. Rezultāts — what was submitted, what happened, what to carry into the next tender, and the commission's clarification requests. */
-export function Rezultats({ project }: { project: Project; bundle: StateBundle; reload: () => Promise<void> }) {
+export function Rezultats({ project, bundle, reload }: { project: Project; bundle: StateBundle; reload: () => Promise<void> }) {
 	const [c, setC] = useState<Closeout>(emptyCloseout());
 	const [request, setRequest] = useState("");
 	const [secret, setSecret] = useState(false);
@@ -28,6 +29,7 @@ export function Rezultats({ project }: { project: Project; bundle: StateBundle; 
 				what="Ko iesniedza, kas notika, un ko no tā paņemt nākamajam konkursam."
 				why="Šeit beidzas konkurss: rezultāts, punkti, mācība un termiņi pēc uzvaras. Pieredzes objektu pievieno reģistram tikai tu pats ar pogu."
 			/>
+		<ExtraSources project={project} bundle={bundle} reload={reload} page="rezultats" />
 			{act.error && <Banner kind="critical">{act.error}</Banner>}
 			<div className="card">
 				<div className="row">

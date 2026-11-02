@@ -5,6 +5,7 @@ import type { LeakReport } from "../shared/leaks";
 import type { DepItem } from "../shared/deps";
 import type { Activity } from "../shared/activity";
 import type { PreviewBlock } from "../shared/preview";
+import type { ExtraSource, SourcePage } from "../shared/sources";
 import type { CheckRun, Closeout, Finding, SignatureRow, SignatureVerdict } from "../shared/checks";
 import type { EngineId, EngineStatus, FolderSummary, Project, RunEvent, Settings } from "../shared/types";
 
@@ -36,6 +37,7 @@ export interface StateBundle {
 	warnings: string[];
 	editions: { candidates: string[]; guess: { original?: string; amended?: string } };
 }
+export type SourceOutcome = { ok: true; source: ExtraSource } | { ok: false; error: string };
 export type TaskOutcome<T> = ({ ok: true } & T) | { ok: false; error: string };
 export type Impact = "kriterijs" | "prasiba" | "redakcionala";
 
@@ -53,6 +55,14 @@ export const api = {
 		pick: (title: string) => call<string | null>("folders:pick", title),
 		summary: (path: string) => call<FolderSummary>("folders:summary", path),
 		open: (path: string) => call<string>("folders:open", path),
+	},
+	sources: {
+		pick: (kind: "file" | "folder") => call<string[] | null>("sources:pick", kind),
+		add: (projectId: string, page: SourcePage, path: string, note: string) => call<SourceOutcome>("sources:add", projectId, page, path, note),
+		refresh: (projectId: string, page: SourcePage, id: string) => call<SourceOutcome>("sources:refresh", projectId, page, id),
+		remove: (projectId: string, page: SourcePage, id: string) => call<void>("sources:remove", projectId, page, id),
+		note: (projectId: string, page: SourcePage, id: string, note: string) => call<void>("sources:note", projectId, page, id, note),
+		open: (projectId: string, page: SourcePage, id: string) => call<string>("sources:open", projectId, page, id),
 	},
 	settings: {
 		get: () => call<Settings>("settings:get"),

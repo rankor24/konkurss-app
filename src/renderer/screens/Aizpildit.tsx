@@ -5,6 +5,7 @@ import type { Project } from "../../shared/types";
 import { api, type Generated, type MatricaResult, type StateBundle } from "../api";
 import type { PreviewBlock } from "../../shared/preview";
 import { Banner, ScreenHead, useAction, useAgentOn } from "../ui";
+import { ExtraSources } from "./Sources";
 import { DocPreview, isOpenItem } from "./DocPreview";
 import { FormsV1, TechV1 } from "./FormsV1";
 
@@ -139,6 +140,7 @@ export function Aizpildit({ project, bundle, reload }: { project: Project; bundl
 				what="App saliek katram dokumentam sarakstu, kas kur jāieraksta un no kurienes tas nāk. Kur formāts ļauj, app aizpilda failu pati."
 				why="Oriģinālās veidlapas netiek mainītas. Ja kāda vieta nav zināma, app to atstāj tukšu un pasaka — tā neizdomā datus."
 			/>
+		<ExtraSources project={project} bundle={bundle} reload={reload} page="aizpildit" />
 			{act.error && <Banner kind="critical">{act.error}</Banner>}
 			<div className="row">
 				<label className="field">Veidne

@@ -4,6 +4,7 @@ import type { StepId } from "../../shared/state";
 import type { Project } from "../../shared/types";
 import { api, type StateBundle } from "../api";
 import { Banner, ScreenHead, useAction } from "../ui";
+import { ExtraSources } from "./Sources";
 
 const ICON = { fail: "✗", warn: "⚠", ok: "✓", na: "⊘" } as const;
 const COLOR = { fail: "var(--critical)", warn: "var(--warn)", ok: "var(--good)", na: "var(--muted)" } as const;
@@ -27,6 +28,7 @@ export function Parbaude({ project, bundle, reload, go }: { project: Project; bu
 				what="Pārbaudes pirms iesniegšanas. Tās atrod tieši tās kļūdas, kas iepriekš maksājušas punktus: nesakritīgas lomas, aizmirstus norādījumus, cita konkursa datus."
 				why="Pārbaude tikai nolasa — neko dokumentos nemaina. Katra atrasta lieta pasaka, ko tā nozīmē un kur to labot."
 			/>
+		<ExtraSources project={project} bundle={bundle} reload={reload} page="parbaude" />
 			{act.error && <Banner kind="critical">{act.error}</Banner>}
 			<div className="card">
 				<div className="row">

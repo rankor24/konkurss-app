@@ -9,6 +9,7 @@ import { loadState, updateState } from "../project-state.js";
 import { fillDocx, fillXlsx, inspectDocx, inspectXlsx, type ToolsConfig } from "../pytools.js";
 import type { Registers } from "../registers/registers.js";
 import { docsByKind } from "../tasks/docs.js";
+import { extraDocs, extraNote, withExtras } from "../tasks/extras.js";
 import { runModelTask } from "../tasks/runner.js";
 import { inForceNolikums } from "../tasks/phase2-run.js";
 import { checkDocument, foreignTerms, otherBuilderTerms, type LeakReport } from "./leaks.js";
@@ -94,10 +95,14 @@ const FILL_DOCS_CELLS = ["tehniska_specifikacija", "pu", "pip"] as const;
 const FILL_DOCS_SECTIONS = ["pip", "paraugmodelu_prasibas", "tehniska_specifikacija", "pu", "grozijumi", "qa"] as const;
 /** The client's BIM requirements say what a BIP section must contain; a Q&A letter only adjusts them. */
 const SECTION_DOC_WEIGHT: Record<(typeof FILL_DOCS_SECTIONS)[number], number> = { pip: 1.6, paraugmodelu_prasibas: 1.3, tehniska_specifikacija: 1, pu: 1, grozijumi: 1, qa: 1 };
+const EXTRA_DOC_WEIGHT = 1;
 
 /** The documents sections are written from, each marked with how much a hit in it counts. */
-export const rankedSectionDocs = (p: Project, s: ProjectState): RankedDoc[] =>
-	FILL_DOCS_SECTIONS.flatMap((k) => docsByKind(p, s, [k]).map((doc) => ({ ...doc, weight: SECTION_DOC_WEIGHT[k] })));
+export const rankedSectionDocs = (p: Project, s: ProjectState): RankedDoc[] => [
+	...FILL_DOCS_SECTIONS.flatMap((k) => docsByKind(p, s, [k]).map((doc) => ({ ...doc, weight: SECTION_DOC_WEIGHT[k] }))),
+	// what a person added on this page: below the client's own requirements, level with the other tender documents
+	...extraDocs(p, s, "aizpildit").map((doc) => ({ ...doc, weight: EXTRA_DOC_WEIGHT })),
+];
 
 /** Model step: project-info cells and instruction sections from the tender documents, each with a verified quote. */
 export async function fillFromTender(d: RunDeps, engine: Engine, base: Base, key: string, onProgress?: (msg: string) => void): Promise<Outcome<{ sheet: FillSheet; rejected: number }>> {
@@ -105,9 +110,14 @@ export async function fillFromTender(d: RunDeps, engine: Engine, base: Base, key
 	const sheet0 = s.fills[key];
 	if (!sheet0) return { ok: false, error: "Vispirms pārskati veidni." };
 	const nol = inForceNolikums(d.project, s);
-	const cellDocs = [...(nol.ok ? nol.docs : []), ...docsByKind(d.project, s, [...FILL_DOCS_CELLS])];
-	const secDocs = docsByKind(d.project, s, [...FILL_DOCS_SECTIONS]);
-	if (secDocs.length === 0 && cellDocs.length === 0) return { ok: false, error: "Nav nolasītu konkursa dokumentu (1. Dokumenti)." };
+	const cellDocs0 = [...(nol.ok ? nol.docs : []), ...docsByKind(d.project, s, [...FILL_DOCS_CELLS])];
+	const secDocs0 = docsByKind(d.project, s, [...FILL_DOCS_SECTIONS]);
+	if (secDocs0.length === 0 && cellDocs0.length === 0) return { ok: false, error: "Nav nolasītu konkursa dokumentu (1. Dokumenti)." };
+	// the page's extra sources go after the tender documents: the tender is read first, and the second pass below reaches them by topic
+	const extra = extraDocs(d.project, s, "aizpildit");
+	const note = extraNote(s, "aizpildit");
+	const cellDocs = [...cellDocs0, ...extra];
+	const secDocs = [...secDocs0, ...extra];
 
 	let rejected = 0;
 	let committed = 0;
@@ -137,7 +147,7 @@ Jau saglabāts: ${committed} lauki/sadaļas. ${left}` : ""}`,
 	const openCells = sheet0.items.filter((i) => i.kind === "cell" && i.status === "missing" && i.by === null && !/(loma|bu?vprojekta dala|uznemums|vards)/i.test(i.label.toLowerCase()) && /^[^()]+$/.test(i.label));
 	if (openCells.length && cellDocs.length) {
 		onProgress?.(`Projekta dati (${openCells.length} lauki)…`);
-		const r = await runModelTask({ engine, base, instructions: `${CELLS_INSTRUCTIONS}
+		const r = await runModelTask({ engine, base, instructions: `${CELLS_INSTRUCTIONS}${note}
 
 LAUKI:
 ${cellsPrompt(openCells)}`, schemaHint: CELLS_HINT, schema: cellsSchema, docs: cellDocs });
@@ -151,7 +161,7 @@ ${cellsPrompt(openCells)}`, schemaHint: CELLS_HINT, schema: cellsSchema, docs: c
 	const batches = chunk(sections, 10);
 	for (const [n, batch] of batches.entries()) {
 		onProgress?.(`Sadaļas ${n + 1}/${batches.length}…`);
-		const r = await runModelTask({ engine, base, instructions: `${SECTIONS_INSTRUCTIONS}
+		const r = await runModelTask({ engine, base, instructions: `${SECTIONS_INSTRUCTIONS}${note}
 
 SADAĻAS:
 ${sectionsPrompt(batch)}`, schemaHint: SECTIONS_HINT, schema: sectionsSchema, docs: secDocs });
@@ -173,7 +183,7 @@ ${sectionsPrompt(batch)}`, schemaHint: SECTIONS_HINT, schema: sectionsSchema, do
 				commit([{ ...item, note: item.note ?? "Dokumentos nav neviena fragmenta par šo tēmu." }]);
 				continue;
 			}
-			const r = await runModelTask({ engine, base, instructions: `${FOCUSED_INSTRUCTIONS}\n\nSADAĻAS:\n${sectionsPrompt([item])}`, schemaHint: SECTIONS_HINT, schema: sectionsSchema, docs: found.docs });
+			const r = await runModelTask({ engine, base, instructions: `${FOCUSED_INSTRUCTIONS}${note}\n\nSADAĻAS:\n${sectionsPrompt([item])}`, schemaHint: SECTIONS_HINT, schema: sectionsSchema, docs: found.docs });
 			if (!r.ok) return fail(r.error, "Atkārtotā meklēšana nav pabeigta — spied „Aizpildīt” vēlreiz, jau aizpildītais netiks pārrakstīts.");
 			const a = applySections([item], r.data, found.docs);
 			rejected += a.rejected;
@@ -266,13 +276,14 @@ export async function fillMatrica(d: RunDeps, engine: Engine | null, base: Base 
 	let lodProposals: LodProposal[] = [];
 	const blank = layout.rows.some((r) => r.kind === "model" && layout.lodCols.some((c, i) => !sheet.cells[`${String.fromCharCode(64 + c)}${r.row}`] && i >= 0));
 	if (blank && engine && base) {
-		const pip = docsByKind(d.project, s, ["pip"]);
-		if (pip.length) {
+		const pip0 = docsByKind(d.project, s, ["pip"]);
+		if (pip0.length) {
+			const { instructions: lodNote, docs: pip } = withExtras(d.project, s, "aizpildit", "", pip0);
 			const contract = s.requirements.dati.contractType.value ?? s.variant?.value ?? "nav zināms";
 			const r = await runModelTask({
 				engine,
 				base,
-				instructions: `${LOD_INSTRUCTIONS}\n\nLīguma veids šim konkursam: ${contract}. Modeļu kodi no veidnes: ${layout.rows.filter((q) => q.kind === "model").map((q) => q.code).join(", ")}.`,
+				instructions: `${LOD_INSTRUCTIONS}${lodNote}\n\nLīguma veids šim konkursam: ${contract}. Modeļu kodi no veidnes: ${layout.rows.filter((q) => q.kind === "model").map((q) => q.code).join(", ")}.`,
 				schemaHint: LOD_HINT,
 				schema: lodSchema,
 				docs: pip,

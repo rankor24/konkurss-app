@@ -170,6 +170,13 @@ mark { background: color-mix(in srgb, var(--warning) 40%, transparent); color: i
 :root[data-theme="dark"] { color-scheme: dark; }
 * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink-2) 45%, transparent) transparent; }
 
+/* extra sources: files and folders a person adds for a page's agent */
+.sources > summary, .src-sum { cursor: pointer; }
+.src-row { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-top: 1px solid var(--line); }
+.src-path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.src-note { width: 100%; }
+.src-files { margin: 4px 0 0; padding-left: 18px; max-height: 160px; overflow-y: auto; }
+
 /* agent switch (top of every page where the agent works) */
 .head-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
 .head-row h1 { margin: 0; }

@@ -9,6 +9,7 @@ import type { Engine, RunOptions } from "../engines/types.js";
 import type { Outcome } from "../fill/run.js";
 import { loadState, updateState } from "../project-state.js";
 import { docsByKind } from "../tasks/docs.js";
+import { withExtras } from "../tasks/extras.js";
 import { locateQuote } from "../tasks/grounding.js";
 import { inForceNolikums } from "../tasks/phase2-run.js";
 import { runModelTask } from "../tasks/runner.js";
@@ -57,9 +58,10 @@ export const POSTWIN_INSTRUCTIONS = [
 export async function readPostWin(p: Project, engine: Engine, base: Base): Promise<Outcome<{ added: number; rejected: number }>> {
 	const s = loadState(p.outputDir);
 	const nol = inForceNolikums(p, s);
-	const docs = [...(nol.ok ? nol.docs : []), ...docsByKind(p, s, ["ligums"])];
-	if (docs.length === 0) return { ok: false, error: "Nav nolasītu konkursa dokumentu (1. Dokumenti)." };
-	const r = await runModelTask({ engine, base, instructions: POSTWIN_INSTRUCTIONS, schemaHint: POSTWIN_HINT, schema: postWinSchema, docs });
+	const tender = [...(nol.ok ? nol.docs : []), ...docsByKind(p, s, ["ligums"])];
+	if (tender.length === 0) return { ok: false, error: "Nav nolasītu konkursa dokumentu (1. Dokumenti)." };
+	const { instructions, docs } = withExtras(p, s, "rezultats", POSTWIN_INSTRUCTIONS, tender);
+	const r = await runModelTask({ engine, base, instructions, schemaHint: POSTWIN_HINT, schema: postWinSchema, docs });
 	if (!r.ok) return r;
 	const found: Closeout["postWin"] = [];
 	let rejected = 0;

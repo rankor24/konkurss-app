@@ -1,6 +1,8 @@
 // Per-tender state, stored in <output>\.konkurss\project.json (prices in finanses.json).
 // Shared by main process and renderer. Every model-derived value is a `Cited`.
 
+import type { ExtraSource, SourcePage } from "./sources.js";
+
 export type Where = "konkurss" | "piedavajums" | "darba";
 
 export const WHERE_LABELS: Record<Where, string> = {
@@ -250,6 +252,8 @@ export interface ProjectState {
 	choices: Choices;
 	tech?: TechState;
 	proofs?: { collectedAt: string; copied: number; missing: number };
+	/** files and folders a person added for the agent of a page */
+	sources?: Partial<Record<SourcePage, ExtraSource[]>>;
 	/** value sheets by template key ("root:rel") */
 	fills: Record<string, FillSheet>;
 	/** later phases keep their data under their own keys */

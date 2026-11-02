@@ -65,40 +65,44 @@ export function scanFolders(p: Project, previous: FileEntry[]): FileEntry[] {
 
 const MEANINGFUL = /[\p{L}\p{N}]/gu;
 
-/** Reads one file's text; returns the updated entry. Never throws. */
-export async function extractOne(p: Project, f: FileEntry, py: PyConfig): Promise<FileEntry> {
-	const full = join(rootDir(p, f), f.rel);
-	const ext = extname(f.rel).toLowerCase();
+export type TextResult = Pick<FileEntry, "text" | "textNote" | "textChars">;
+
+/** Reads the text of the file at `full` into the cache file `target`. Never throws. */
+export async function extractTo(full: string, target: string, py: PyConfig): Promise<TextResult> {
+	const ext = extname(full).toLowerCase();
 	try {
 		let text: string;
 		if ([".txt", ".md", ".csv"].includes(ext)) text = readFileSync(full, "utf8");
 		else {
 			const reader = readerFor(py.skillsDir, full);
-			if (!reader) return { ...f, text: "neattiecas" };
+			if (!reader) return { text: "neattiecas" };
 			text = await runPython(py, reader.script, reader.args);
 		}
 		text = text.replace(/\r\n?/g, "\n"); // Python on Windows writes CRLF; the cache and citations use \n
 		const meaningful = (text.match(MEANINGFUL) ?? []).length;
-		const target = textPath(p, f);
 		mkdirSync(join(target, ".."), { recursive: true });
 		writeFileSync(target, text, "utf8");
 		if (meaningful < 40) {
 			return {
-				...f,
 				text: "tukss",
 				textChars: text.length,
 				textNote: ext === ".pdf" ? "Skenēts attēls — tekstu nolasīt nevar, pārbaudi ar aci." : "Teksta gandrīz nav.",
 			};
 		}
-		return { ...f, text: "ok", textChars: text.length, textNote: undefined };
+		return { text: "ok", textChars: text.length, textNote: undefined };
 	} catch (e) {
 		const msg = (e as Error).message.split("\n").slice(-3).join(" ").slice(0, 300);
 		const note =
 			ext === ".edoc"
 				? "Parakstīto failu nevar atvērt. Lūdz lasāmu kopiju (PDF vai DOCX) vai ievadi parakstītāju ar roku."
 				: `Neizdevās nolasīt: ${msg}`;
-		return { ...f, text: "kluda", textNote: note };
+		return { text: "kluda", textNote: note };
 	}
+}
+
+/** Reads one file's text; returns the updated entry. Never throws. */
+export async function extractOne(p: Project, f: FileEntry, py: PyConfig): Promise<FileEntry> {
+	return { ...f, ...(await extractTo(join(rootDir(p, f), f.rel), textPath(p, f), py)) };
 }
 
 /** Extracts every readable file not yet read. Runs a few at a time; reports progress. */

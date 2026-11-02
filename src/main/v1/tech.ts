@@ -10,6 +10,7 @@ import { nextVersionPath, safeName, type Outcome } from "../fill/run.js";
 import { loadState, updateState } from "../project-state.js";
 import { fillDocx, inspectDocx, type DocxEdit, type ToolsConfig } from "../pytools.js";
 import { docsByKind } from "../tasks/docs.js";
+import { withExtras } from "../tasks/extras.js";
 import { locateQuote, type DocInput } from "../tasks/grounding.js";
 import { inForceNolikums } from "../tasks/phase2-run.js";
 import { runModelTask } from "../tasks/runner.js";
@@ -56,12 +57,13 @@ export async function proposeTech(d: TechDeps, engine: Engine, base: Base, boile
 	const paragraphs = info.paragraphs.filter((p) => p.text.trim().length >= 30 && !p.heading).map((p) => ({ i: p.i, text: p.text.trim() }));
 	if (paragraphs.length === 0) return { ok: false, error: "Iepriekšējā tehniskā piedāvājumā nav teksta, ko pielāgot." };
 	const nol = inForceNolikums(d.project, s);
-	const docs = [...(nol.ok ? nol.docs : []), ...docsByKind(d.project, s, ["tehniska_specifikacija", "qa", "grozijumi"])];
-	if (docs.length === 0) return { ok: false, error: "Nav nolasītu konkursa dokumentu (1. Dokumenti)." };
+	const tender = [...(nol.ok ? nol.docs : []), ...docsByKind(d.project, s, ["tehniska_specifikacija", "qa", "grozijumi"])];
+	if (tender.length === 0) return { ok: false, error: "Nav nolasītu konkursa dokumentu (1. Dokumenti)." };
+	const { instructions: note, docs } = withExtras(d.project, s, "aizpildit", "", tender);
 	const r = await runModelTask({
 		engine,
 		base,
-		instructions: `${TECH_INSTRUCTIONS}\n\nIEPRIEKŠĒJĀ PIEDĀVĀJUMA RINDKOPAS:\n${techPrompt(paragraphs)}`,
+		instructions: `${TECH_INSTRUCTIONS}${note}\n\nIEPRIEKŠĒJĀ PIEDĀVĀJUMA RINDKOPAS:\n${techPrompt(paragraphs)}`,
 		schemaHint: TECH_HINT,
 		schema: techSchema,
 		docs,

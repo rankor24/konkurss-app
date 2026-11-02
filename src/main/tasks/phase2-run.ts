@@ -9,6 +9,7 @@ import { loadState, updateState } from "../project-state.js";
 import { diffParagraphs } from "../versions/diff.js";
 import { compareTemplates } from "../versions/templates.js";
 import { docLabel, docsByKind } from "./docs.js";
+import { extraDocs, extraNote, withExtras } from "./extras.js";
 import { mergeSecondPass, type DocInput } from "./grounding.js";
 import * as T from "./phase2.js";
 import { runModelTask } from "./runner.js";
@@ -105,9 +106,10 @@ export function inForceNolikums(p: Project, s: ProjectState): Outcome<{ docs: Do
 
 export async function readQa(p: Project, engine: Engine, base: Base): Promise<Outcome<{ items: number; rejected: number }>> {
 	const s = loadState(p.outputDir);
-	const docs = docsByKind(p, s, ["qa"]);
-	if (docs.length === 0) return { ok: false, error: "Komisijas atbilžu dokumentu nav (vai tie nav nolasīti)." };
-	const r = await runModelTask({ engine, base, instructions: T.QA_INSTRUCTIONS, schemaHint: T.QA_HINT, schema: T.qaSchema, docs });
+	const qa = docsByKind(p, s, ["qa"]);
+	if (qa.length === 0) return { ok: false, error: "Komisijas atbilžu dokumentu nav (vai tie nav nolasīti)." };
+	const { instructions, docs } = withExtras(p, s, "versija", T.QA_INSTRUCTIONS, qa);
+	const r = await runModelTask({ engine, base, instructions, schemaHint: T.QA_HINT, schema: T.qaSchema, docs });
 	if (!r.ok) return r;
 	const g = T.groundQa(r.data, docs);
 	updateState(p.outputDir, (st) => {
@@ -134,13 +136,14 @@ export function compareForms(p: Project): Outcome<{ forms: number; differing: nu
 
 export async function readDeadline(p: Project, engine: Engine, base: Base, pass: 1 | 2 = 1): Promise<Outcome<{ deadline: ReturnType<typeof T.groundDeadline> }>> {
 	const s = loadState(p.outputDir);
-	const docs = docsByKind(p, s, ["iub", "nolikums", "grozijumi", "qa", "tehniska_specifikacija"]);
-	if (docs.length === 0) return { ok: false, error: "Nav nolasītu dokumentu, kur meklēt termiņu." };
+	const tender = docsByKind(p, s, ["iub", "nolikums", "grozijumi", "qa", "tehniska_specifikacija"]);
+	if (tender.length === 0) return { ok: false, error: "Nav nolasītu dokumentu, kur meklēt termiņu." };
+	const { instructions, docs } = withExtras(p, s, "versija", pass === 1 ? T.DEADLINE_INSTRUCTIONS : T.DEADLINE_INSTRUCTIONS_2, tender);
 	const ordered = pass === 1 ? docs : [...docs].reverse();
 	const r = await runModelTask({
 		engine,
 		base,
-		instructions: pass === 1 ? T.DEADLINE_INSTRUCTIONS : T.DEADLINE_INSTRUCTIONS_2,
+		instructions,
 		schemaHint: T.DEADLINE_HINT,
 		schema: T.deadlineSchema,
 		docs: ordered,
@@ -168,8 +171,9 @@ function docsForBlock(p: Project, s: ProjectState, block: BlockId): Outcome<{ do
 	const nol = inForceNolikums(p, s);
 	if (!nol.ok) return nol;
 	const qa = docsByKind(p, s, ["qa"]);
-	if (block === "dati") return { ok: true, docs: [...nol.docs, ...docsByKind(p, s, ["tehniska_specifikacija", "iub"])] };
-	return { ok: true, docs: [...nol.docs, ...qa] };
+	const extra = extraDocs(p, s, "prasibas");
+	if (block === "dati") return { ok: true, docs: [...nol.docs, ...docsByKind(p, s, ["tehniska_specifikacija", "iub"]), ...extra] };
+	return { ok: true, docs: [...nol.docs, ...qa, ...extra] };
 }
 
 export type BlockResult = { rejected: number };
@@ -179,7 +183,7 @@ export async function readBlock(p: Project, engine: Engine, base: Base, block: B
 	const d = docsForBlock(p, s, block);
 	if (!d.ok) return d;
 	const docs = pass === 1 ? d.docs : [...d.docs].reverse();
-	const run = <S extends import("zod").ZodTypeAny>(instructions: string, schemaHint: string, schema: S) => runModelTask({ engine, base, instructions, schemaHint, schema, docs });
+	const run = <S extends import("zod").ZodTypeAny>(instructions: string, schemaHint: string, schema: S) => runModelTask({ engine, base, instructions: instructions + extraNote(s, "prasibas"), schemaHint, schema, docs });
 	switch (block) {
 		case "dati": {
 			const r = await run(T.DATI_INSTRUCTIONS, T.DATI_HINT, T.datiSchema);

@@ -3,6 +3,7 @@ import type { QaItem } from "../../shared/state";
 import type { Project } from "../../shared/types";
 import { api, type Impact, type StateBundle } from "../api";
 import { Banner, CitedValue, ScreenHead, useAction } from "../ui";
+import { ExtraSources } from "./Sources";
 
 const IMPACT_LABEL: Record<Impact, string> = { kriterijs: "maina vērtēšanas kritēriju", prasiba: "maina prasību", redakcionala: "redakcionāla" };
 const QA_LABEL: Record<NonNullable<QaItem["impact"]>, string> = { maina_apjomu: "maina apjomu", maina_kriteriju: "maina kritēriju", maina_prasibu: "maina prasību", skaidro: "tikai skaidro" };
@@ -37,6 +38,7 @@ export function Versija({ project, bundle, reload }: { project: Project; bundle:
 				what="Nolikumu drīkst grozīt pēc publicēšanas, un komisijas atbildes var mainīt vērtēšanas kritērijus."
 				why="Ja strādāsi ar veco redakciju, vari izpildīt prasību, kas vairs nav spēkā."
 			/>
+		<ExtraSources project={project} bundle={bundle} reload={reload} page="versija" />
 			{act.error && <Banner kind="critical">{act.error}</Banner>}
 			<div className="hint">Ja dokumenti runā pretī, spēkā ir: komisijas atbildes → grozījumi → nolikumā iekļautās veidlapas → atsevišķi izsniegtās veidlapas → PIP un tehniskā specifikācija. Iepriekšējo konkursu dokumenti prasības nenosaka.</div>
 
