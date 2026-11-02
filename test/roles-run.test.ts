@@ -19,7 +19,8 @@ const py = { command: "py", args: [], skillsDir: tmp };
 const PIP =
 	"5.3. Pretendents nodrošina Projekta informācijas vadītāju / BIM koordinatoru un VDV pārvaldnieku visā projektēšanas laikā.\n" +
 	"5.4. BIM modeļa autori tiek norīkoti pa būvprojekta daļām: AR, BK, ŪKT un EL.\n" +
-	"5.5. Būvdarbu laikā būvnieks nodrošina 4D speciālistu un tāmētāju.";
+	"5.5. Būvdarbu laikā būvnieks nodrošina 4D speciālistu un tāmētāju.\n" +
+	"5.6. Dalībnieki: VDV pārvaldnieks | SIA Digitālā Vide | Jānis Bērziņš; BIM modeļa autors | SIA Modelis | Anna Ozola; BIM modeļa autors | SIA Modelis | Pēteris Liepa.";
 
 function setup(name: string, roles?: Roles) {
 	const out = join(tmp, name, "IESNIEDZAMIE");
@@ -78,7 +79,7 @@ test("roles: a quote that is not in the documents is rejected; the same role twi
 	assert.equal(g.already, 1, "VDV pārvaldnieks is already in the table, so it is not offered again");
 	assert.equal(g.rejected, 1, "the drone pilot has no quote in the text");
 	assert.ok(g.items.every((i) => i.cite.file === "PIP.docx" && !i.decision));
-	assert.equal(JSON.stringify(g.items).includes("Varlamov"), false, "no person is ever suggested");
+	assert.equal(JSON.stringify(g.items).includes("Varlamov"), false, "a person who is only in the table is never copied into a suggestion");
 });
 
 test("reading again keeps a role dismissed earlier dismissed, with the same id", async () => {
@@ -129,4 +130,46 @@ test("a role found only in the page's own source is cited from that file, and th
 	assert.ok(r.ok && r.added === 1);
 	assert.match(seen.prompt, /kolēģa lomu saraksts no līdzīga projekta/);
 	assert.equal(loadState(p.outputDir).rolePicks!.items[0].cite.file, "PAPILDU: Kolegu_lomas.txt");
+});
+
+test("a company and a person are offered only when the document names them: in the quote, per person, and not twice", () => {
+	const docs = [{ file: "PIP.docx", text: PIP }];
+	const row = "VDV pārvaldnieks | SIA Digitālā Vide | Jānis Bērziņš";
+	const authors = "BIM modeļa autors | SIA Modelis | Anna Ozola; BIM modeļa autors | SIA Modelis | Pēteris Liepa";
+	const empty: Roles = { design: [], build: {} };
+	const g = groundRoles(
+		reply([
+			{ role: "VDV pārvaldnieks", company: "SIA Digitālā Vide", person: "Jānis Bērziņš", side: "projektesana", quote: row },
+			{ role: "BIM modeļa autors", company: "SIA Modelis", person: "Anna Ozola", side: "projektesana", quote: authors },
+			{ role: "BIM modeļa autors", company: "SIA Modelis", person: "Pēteris Liepa", side: "projektesana", quote: authors },
+			{ role: "BIM modeļa autors", company: "SIA Modelis", person: "Pēteris Liepa", side: "projektesana", quote: authors },
+			{ role: "Tāmētājs", company: "SIA Izdomātā", person: "Juris Izdomātais", side: "buvdarbi", quote: "Būvdarbu laikā būvnieks nodrošina 4D speciālistu un tāmētāju" },
+		]),
+		docs,
+		empty,
+	);
+	assert.deepEqual(
+		g.items.map((i) => [i.role, i.company, i.person]),
+		[
+			["VDV pārvaldnieks", "SIA Digitālā Vide", "Jānis Bērziņš"],
+			["BIM modeļa autors", "SIA Modelis", "Anna Ozola"],
+			["BIM modeļa autors", "SIA Modelis", "Pēteris Liepa"],
+			["Tāmētājs", "", ""],
+		],
+		"two authors are two entries, a repeat is dropped, and names that are not in the quote are left out while the role stays",
+	);
+
+	const inTable: Roles = { design: [{ id: "1", role: "BIM modeļa autors", part: "AR", company: "SIA Modelis", person: "Anna Ozola" }], build: {} };
+	const g2 = groundRoles(reply([{ role: "BIM modeļa autors", company: "SIA Modelis", person: "Anna Ozola", side: "projektesana", quote: authors }, { role: "BIM modeļa autors", company: "SIA Modelis", person: "Pēteris Liepa", side: "projektesana", quote: authors }]), docs, inTable);
+	assert.deepEqual(g2.items.map((i) => i.person), ["Pēteris Liepa"], "the person already in the table is not offered again, the other one is");
+	assert.equal(g2.already, 1);
+});
+
+test("the names reach the table row only through the stored suggestion", async () => {
+	const p = setup("r5");
+	const r = await suggestRoles(p, engineWith(reply([{ role: "VDV pārvaldnieks", company: "SIA Digitālā Vide", person: "Jānis Bērziņš", side: "projektesana", quote: "VDV pārvaldnieks | SIA Digitālā Vide | Jānis Bērziņš" }])), base);
+	assert.ok(r.ok);
+	const [s] = loadState(p.outputDir).rolePicks!.items;
+	assert.deepEqual([s.company, s.person], ["SIA Digitālā Vide", "Jānis Bērziņš"]);
+	assert.deepEqual(loadState(p.outputDir).roles.design, [], "the table itself is untouched");
 });

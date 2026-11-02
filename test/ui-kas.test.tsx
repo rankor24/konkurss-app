@@ -13,7 +13,7 @@ const bundle = (items?: RoleSuggestion[]): StateBundle => {
 	if (items) state.rolePicks = { items, readAt: "2026-11-02T09:00:00Z", already: 1, rejected: 2 };
 	return { state, steps: {} as StateBundle["steps"], progress: { done: 0, total: 0, problems: 0 }, checklist: { done: 0, total: 0 }, warnings: [], editions: { candidates: [], guess: {} } };
 };
-const sug = (role: string, side: RoleSuggestion["side"], decision: RoleSuggestion["decision"] = null, part = ""): RoleSuggestion => ({ id: role, role, part, side, cite: { file: "PIP.docx", quote: `Pretendents nodrošina ${role}` }, decision });
+const sug = (role: string, side: RoleSuggestion["side"], decision: RoleSuggestion["decision"] = null, part = "", company = "", person = ""): RoleSuggestion => ({ id: role, role, part, company, person, side, cite: { file: "PIP.docx", quote: `Pretendents nodrošina ${role}` }, decision });
 
 test("step 5 has the agent switch, the sources panel and the role suggestions", async () => {
 	const { KasKoDara } = await import("../src/renderer/screens/KasKoDara.tsx");
@@ -27,10 +27,12 @@ test("step 5 has the agent switch, the sources panel and the role suggestions", 
 test("suggestions: each with its quote and file, a button per place it can go, dismissed ones hidden, the counts said", async () => {
 	const { KasKoDara } = await import("../src/renderer/screens/KasKoDara.tsx");
 	const html = renderToStaticMarkup(
-		h(KasKoDara, { project, bundle: bundle([sug("VDV pārvaldnieks", "projektesana", null, "AR, BK"), sug("4D speciālists", "buvdarbi"), sug("Drona pilots", "buvdarbi", "rejected"), sug("Ugunsdrošības konsultants", "nav_skaidrs", "added")]), reload: async () => {} }),
+		h(KasKoDara, { project, bundle: bundle([sug("VDV pārvaldnieks", "projektesana", null, "AR, BK", "SIA Digitālā Vide", "Jānis Bērziņš"), sug("4D speciālists", "buvdarbi"), sug("Drona pilots", "buvdarbi", "rejected"), sug("Ugunsdrošības konsultants", "nav_skaidrs", "added")]), reload: async () => {} }),
 	);
 	assert.match(html, /VDV pārvaldnieks/);
 	assert.match(html, /AR, BK/);
+	assert.match(html, /SIA Digitālā Vide/);
+	assert.match(html, /Jānis Bērziņš/);
 	assert.match(html, /„Pretendents nodrošina VDV pārvaldnieks”/);
 	assert.match(html, /PIP\.docx/);
 	assert.match(html, /→ Projektēšana \(mēs\)/);

@@ -174,12 +174,15 @@ export interface Roles {
 	build: Record<string, RoleRow[]>;
 }
 
-/** A role the tender asks for, read from the documents with its quote. The people are never suggested: only a person fills those. */
+/** A role the tender asks for, read from the documents with its quote, and the company and person when the document names them. Nobody is suggested from memory or from the register. */
 export interface RoleSuggestion {
 	id: string;
 	role: string;
 	/** būvprojekta daļu kodi, only when the quote itself names them */
 	part: string;
+	/** company and person the document itself names for this role, only when both stand in the quote; otherwise empty */
+	company: string;
+	person: string;
 	/** where the document puts the role; "nav_skaidrs" leaves the choice to the person */
 	side: "projektesana" | "buvdarbi" | "nav_skaidrs";
 	cite: Citation;

@@ -49,7 +49,7 @@ function RoleTable({ rows, onChange, people, defaultCompany }: { rows: RoleRow[]
 
 const SIDE_TEXT: Record<RoleSuggestion["side"], string> = { projektesana: "projektētāja puse", buvdarbi: "būvnieka puse", nav_skaidrs: "dokuments nepasaka, kuras puses loma" };
 
-/** Roles the agent read from the tender, each with its quote. Nothing goes into the table until a person presses a button; people's names are never suggested. */
+/** Roles the agent read from the tender, each with its quote. Nothing goes into the table until a person presses a button; a company or person is offered only when the document names them. */
 function RoleSuggestions({ picks, builders, busy, agentOn, onSuggest, onAdd, onReject }: {
 	picks: NonNullable<StateBundle["state"]["rolePicks"]> | undefined;
 	builders: string[];
@@ -66,7 +66,7 @@ function RoleSuggestions({ picks, builders, busy, agentOn, onSuggest, onAdd, onR
 				<h2 className="grow">Lomas, ko prasa konkurss</h2>
 				<button className="primary" disabled={!!busy || !agentOn} title={agentOn ? undefined : "Aģents ir izslēgts"} onClick={onSuggest}>{busy === "suggest" ? "Lasu dokumentus…" : "Ieteikt lomas no konkursa"}</button>
 			</div>
-			<p className="hint">Aģents izlasa PIP, nolikumu un specifikāciju un piedāvā lomas ar citātu. Tabulā nekas neparādās, kamēr nenospied pogu; vārdus un uzņēmumus ieraksti pats.</p>
+			<p className="hint">Aģents izlasa PIP, nolikumu un specifikāciju un piedāvā lomas ar citātu. Ja dokuments pats nosauc uzņēmumu vai cilvēku, tie tiek piedāvāti līdzi (tikai tad, ja tie stāv citātā). Tabulā nekas neparādās, kamēr nenospied pogu.</p>
 			{!agentOn && <Banner>Aģents ir izslēgts — lomas jāieraksta pašam.</Banner>}
 			{picks && (
 				<div className="hint">
@@ -78,6 +78,8 @@ function RoleSuggestions({ picks, builders, busy, agentOn, onSuggest, onAdd, onR
 					<div className="row">
 						<strong>{s.role}</strong>
 						{s.part && <span className="chip mono">{s.part}</span>}
+						{s.company && <span className="chip">{s.company}</span>}
+						{s.person && <span className="chip">{s.person}</span>}
 						<span className="hint">{SIDE_TEXT[s.side]}</span>
 						<span className="grow" />
 						<button className={s.side === "projektesana" ? "primary" : ""} disabled={!!busy} onClick={() => onAdd(s, "design")}>→ Projektēšana (mēs)</button>
@@ -131,7 +133,7 @@ export function KasKoDara({ project, bundle, reload }: { project: Project; bundl
 		act.run(
 			"add",
 			async () => {
-				const row: RoleRow = { ...blank(), role: s.role, part: s.part };
+				const row: RoleRow = { ...blank(), role: s.role, part: s.part, company: s.company ?? "", person: s.person ?? "" };
 				const next: Roles = target === "design" ? { ...roles, design: [...roles.design, row] } : { ...roles, build: { ...roles.build, [target]: [...(roles.build[target] ?? []), row] } };
 				await api.roles.save(project.id, next);
 				await api.roles.decide(project.id, s.id, "added");

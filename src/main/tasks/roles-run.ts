@@ -19,6 +19,8 @@ export const rolesSchema = z.object({
 		z.object({
 			role: z.string(),
 			part: z.string().nullable(),
+			company: z.string().nullish(),
+			person: z.string().nullish(),
 			side: z.enum(["projektesana", "buvdarbi", "nav_skaidrs"]),
 			quote: z.string(),
 			file: z.string().nullable(),
@@ -26,14 +28,15 @@ export const rolesSchema = z.object({
 	),
 });
 
-export const ROLES_HINT = `{"items": [{"role": "lomas nosaukums kā dokumentā", "part": "AR, BK (vai null)", "side": "projektesana" | "buvdarbi" | "nav_skaidrs", "quote": "burtisks citāts no dokumenta", "file": "faila nosaukums"}]}`;
+export const ROLES_HINT = `{"items": [{"role": "lomas nosaukums kā dokumentā", "part": "AR, BK (vai null)", "company": "uzņēmums, ja citāts to nosauc (vai null)", "person": "Vārds Uzvārds, ja citāts to nosauc (vai null)", "side": "projektesana" | "buvdarbi" | "nav_skaidrs", "quote": "burtisks citāts no dokumenta", "file": "faila nosaukums"}]}`;
 
 export const ROLES_INSTRUCTIONS = [
 	"Atrodi lomas un speciālistus, ko konkurss prasa vai nosauc kā iesaistāmos: BIM koordinators, VDV pārvaldnieks, BIM modeļa autori pa būvprojekta daļām, 4D/5D speciālisti, tāmētājs, būvdarbu vadītājs, lāzerskenēšanas speciālists un tamlīdzīgi.",
 	"role: loma tā, kā tā nosaukta dokumentā (īss nosaukums, bez uzņēmuma un bez personas vārda).",
+	'company, person: uzņēmums un cilvēks, ko dokuments PATS nosauc šai lomai (piem. dalībnieku tabulas rindā "VDV pārvaldnieks | SIA Digitālā Vide | Jānis Bērziņš"). Raksti tos TIKAI, ja tie burtiski stāv tajā pašā citātā; citādi null. Ja dokumentā ir vairāki cilvēki vienai lomai, dod katram savu ierakstu.',
 	'part: būvprojekta daļu kodi (piem. "AR, BK, ŪKT") — TIKAI ja pats citāts tos nosauc; citādi null. Kodus neizdomā.',
 	"side: projektesana — projektētāja puse (BIM koordinators, VDV pārvaldnieks, modeļu autori); buvdarbi — būvnieka puse (būvdarbu vadītājs, 4D, 5D, tāmētājs, izpilddokumentācija); nav_skaidrs — dokuments nepasaka, kuras puses loma tā ir.",
-	"Katrai lomai burtisks citāts (10–300 zīmes) no dokumenta, kurā loma minēta, un faila nosaukums. Ja dokumentā lomas nav, to neraksti. Neizdomā lomas, personas vai uzņēmumus.",
+	"Katrai lomai burtisks citāts (10–300 zīmes) no dokumenta, kurā loma minēta (un kurā ir uzņēmums vai cilvēks, ja tos raksti), un faila nosaukums. Ja dokumentā lomas nav, to neraksti. Neizdomā lomas, personas vai uzņēmumus.",
 ].join("\n");
 
 /** Kodi like "AR, BK, ŪKT": capital letters and digits only, and each one must stand in the quote itself. */
@@ -47,31 +50,43 @@ export function partFrom(raw: string | null, quote: string): string {
 
 const key = (role: string) => normalizeForMatch(role).replace(/[^\p{L}\d ]/gu, "").trim();
 
+/** A company or a person's name counts only when the cited text itself contains it. */
+export function nameIn(raw: string | null | undefined, quote: string): string {
+	const v = (raw ?? "").trim();
+	return v.length >= 3 && normalizeForMatch(quote).includes(normalizeForMatch(v)) ? v : "";
+}
+
 /**
- * Keeps only roles whose quote is really in a document, once each, that are not already in the table
- * and were not dismissed before. A person's earlier decision on the same role is kept.
+ * Keeps only roles whose quote is really in a document, once per role and person, that are not already in the table
+ * and were not dismissed before. A company or a person is kept only when it stands in the quote. A person's earlier decision is kept.
  */
 export function groundRoles(data: z.infer<typeof rolesSchema>, docs: DocInput[], roles: Roles, previous: RoleSuggestion[] = []): { items: RoleSuggestion[]; already: number; rejected: number } {
-	const inTable = new Set([...roles.design, ...Object.values(roles.build).flat()].map((r) => key(r.role)).filter(Boolean));
+	const rows = [...roles.design, ...Object.values(roles.build).flat()].filter((r) => key(r.role));
 	const seen = new Set<string>();
 	const items: RoleSuggestion[] = [];
 	let already = 0;
 	let rejected = 0;
 	for (const it of data.items) {
 		const k = key(it.role);
-		if (!k || seen.has(k)) continue;
+		if (!k) continue;
 		const cite = locateQuote(it.quote, docs, it.file ?? undefined);
 		if (!cite) {
 			rejected++;
 			continue;
 		}
-		seen.add(k);
-		if (inTable.has(k)) {
+		const person = nameIn(it.person, cite.quote);
+		const company = nameIn(it.company, cite.quote);
+		// one entry per role and person: two authors of the same role are both offered
+		const id = `${k}|${key(person)}`;
+		if (seen.has(id)) continue;
+		seen.add(id);
+		// in the table already: the same role, and — when the document names a person — that same person
+		if (rows.some((r) => key(r.role) === k && (!person || key(r.person) === key(person)))) {
 			already++;
 			continue;
 		}
-		const old = previous.find((p) => key(p.role) === k);
-		items.push({ id: old?.id ?? randomUUID(), role: it.role.trim(), part: partFrom(it.part, cite.quote), side: it.side, cite, decision: old?.decision === "rejected" ? "rejected" : null });
+		const old = previous.find((p) => key(p.role) === k && key(p.person ?? "") === key(person));
+		items.push({ id: old?.id ?? randomUUID(), role: it.role.trim(), part: partFrom(it.part, cite.quote), company, person, side: it.side, cite, decision: old?.decision === "rejected" ? "rejected" : null });
 	}
 	return { items, already, rejected };
 }
