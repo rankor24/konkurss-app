@@ -61,6 +61,8 @@ export interface Settings {
 	hasClaudeKey: boolean;
 	/** the "Aģents" switch on every page; anything but false means on */
 	agentOn?: boolean;
+	/** colours: follow the system (default), or always light / dark */
+	theme?: "auto" | "light" | "dark";
 	/** extra names of other tenders to look for in finished documents */
 	foreignTerms?: string[];
 }

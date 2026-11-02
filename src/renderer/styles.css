@@ -21,8 +21,9 @@
 	color: var(--ink);
 	background: var(--bg);
 }
+/* dark = the system says dark and the person has not forced light, or the person forced dark (data-theme is set from Settings) */
 @media (prefers-color-scheme: dark) {
-	:root {
+	:root:not([data-theme="light"]) {
 		--bg: #15181d;
 		--panel: #1c2027;
 		--rail: #12151a;
@@ -39,6 +40,23 @@
 		--model: #7fb79c;
 		--model-bg: #1a2a22;
 	}
+}
+:root[data-theme="dark"] {
+	--bg: #15181d;
+	--panel: #1c2027;
+	--rail: #12151a;
+	--ink: #e7eaef;
+	--ink-2: #96a0af;
+	--line: #2a2f38;
+	--accent: #5b94c9;
+	--accent-ink: #0d1114;
+	--critical: #e06b62;
+	--warning: #d9a22b;
+	--warning-bg: #2b2412;
+	--good: #5fa37e;
+	--secret: #a98bd1;
+	--model: #7fb79c;
+	--model-bg: #1a2a22;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); }
@@ -148,6 +166,8 @@ mark { background: color-mix(in srgb, var(--warning) 40%, transparent); color: i
 
 /* one calm scrollbar style everywhere, matching the theme; native widgets follow the theme too */
 :root { color-scheme: light dark; }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
 * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--ink-2) 45%, transparent) transparent; }
 
 /* agent switch (top of every page where the agent works) */

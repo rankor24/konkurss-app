@@ -20,7 +20,7 @@ import { Parbaude } from "./screens/Parbaude";
 import { Paraksti } from "./screens/Paraksti";
 import { Rezultats } from "./screens/Rezultats";
 import { ActivityPanel } from "./screens/ActivityPanel";
-import { Banner, StateIcon } from "./ui";
+import { Banner, StateIcon, ThemeSwitch } from "./ui";
 
 type View = { kind: "list" } | { kind: "new" } | { kind: "settings" } | { kind: "registers" } | { kind: "project"; id: string; step: StepId | "chat" };
 
@@ -113,6 +113,7 @@ export function App() {
 					</>
 				)}
 				<span className="spacer" />
+				<ThemeSwitch />
 			</header>
 
 			<div className="body">

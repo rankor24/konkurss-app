@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { withHint } from "../shared/hints";
 import { STEP_ICON, type Cited, type StepStatus } from "../shared/state";
+import { THEMES, themeAttr, themeOf, type Theme } from "../shared/theme";
 import { api } from "./api";
 
 // One switch for the whole app, shared by every page that shows it.
@@ -37,6 +38,66 @@ export function AgentSwitch() {
 			<span className="track" aria-hidden="true"><span className="knob" /></span>
 			<span>Aģents: {on ? "ieslēgts" : "izslēgts"}</span>
 		</label>
+	);
+}
+
+// The colour theme is kept like the agent switch: one value, shared, saved in Settings. A copy in localStorage lets the next start paint the right colours before Settings arrive.
+const THEME_KEY = "theme";
+const readCachedTheme = (): Theme => {
+	try {
+		return themeOf(localStorage.getItem(THEME_KEY));
+	} catch {
+		return "auto";
+	}
+};
+let theme: Theme = readCachedTheme();
+let themeLoaded = false;
+const themeSubs = new Set<(t: Theme) => void>();
+const paint = (t: Theme) => {
+	const attr = themeAttr(t);
+	if (attr) document.documentElement.dataset.theme = attr;
+	else delete document.documentElement.dataset.theme;
+};
+const setThemeValue = (t: Theme) => {
+	theme = t;
+	paint(t);
+	try {
+		localStorage.setItem(THEME_KEY, t);
+	} catch {
+		/* private mode: Settings still keep it */
+	}
+	themeSubs.forEach((f) => f(t));
+};
+if (typeof document !== "undefined") paint(theme);
+
+export function useTheme(): [Theme, (t: Theme) => void] {
+	const [t, setT] = useState(theme);
+	useEffect(() => {
+		themeSubs.add(setT);
+		if (!themeLoaded) {
+			themeLoaded = true;
+			api.settings.get().then((s) => setThemeValue(themeOf(s.theme))).catch(() => (themeLoaded = false));
+		} else setT(theme);
+		return () => void themeSubs.delete(setT);
+	}, []);
+	return [t, (next) => {
+		const before = theme;
+		setThemeValue(next);
+		api.settings.save({ theme: next }).catch(() => setThemeValue(before));
+	}];
+}
+
+/** Auto / Gaišs / Tumšs, in the top bar. */
+export function ThemeSwitch() {
+	const [current, set] = useTheme();
+	return (
+		<div className="seg" role="group" aria-label="Krāsu tēma">
+			{THEMES.map((o) => (
+				<button key={o.id} className={current === o.id ? "on" : ""} aria-pressed={current === o.id} title={o.title} onClick={() => set(o.id)}>
+					{o.label}
+				</button>
+			))}
+		</div>
 	);
 }
 
