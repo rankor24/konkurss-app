@@ -173,3 +173,57 @@ test("the names reach the table row only through the stored suggestion", async (
 	assert.deepEqual([s.company, s.person], ["SIA Digitālā Vide", "Jānis Bērziņš"]);
 	assert.deepEqual(loadState(p.outputDir).roles.design, [], "the table itself is untouched");
 });
+
+// ---------- the lists of named people that are already in the project ----------
+const SPEC_LIST =
+	"Speciālistu saraksts (veidne)\n[TABULA]\n| Specialitāte | Vārds, uzvārds | Sertifikāta Nr.; (ja attiecināms) |\n| Būvprojekta vadītājs | Renāte Truševska | 1-00210 |\n| Projektētājs/BIM autors | Mārtiņš Nikāzis | 3-01596 |\n| VDV pārvaldnieks | Jānis Kreics | 4-02557 |\n[/TABULA]";
+const SUB_LIST = "Personu uz kuru spējām balstās/apakšuzņēmēju saraksts\n| 1.3 | SIA “RPRO”; Reģ.nr. 40103492350; Kontaktpersona: Jānis Kreics | Ūdensapgādes un kanalizācijas sistēmu projektēšana | Jā |";
+
+function withLists(name: string) {
+	const p = setup(name);
+	const s = loadState(p.outputDir);
+	const add = (rel: string, kind: FileEntry["kind"], text: string) => {
+		const f: FileEntry = { rel, root: "source", where: "konkurss", kind, kindSetByUser: false, size: 1, mtimeMs: 1, text: "ok" };
+		mkdirSync(join(textPath(p, f), ".."), { recursive: true });
+		writeFileSync(textPath(p, f), text, "utf8");
+		s.files.push(f);
+	};
+	add("UPB/4.0_Speciālistu_saraksts.docx", "kvalifikacija", SPEC_LIST);
+	add("UPB/9.0_Apaksuznemeju_saraksts_2025_95.docx", "cits", SUB_LIST); // the app files this one as "cits"
+	add("Cits/Piezimes.docx", "cits", "Šis fails nav saraksts un netiek lasīts kā dalībnieku saraksts.");
+	saveState(p.outputDir, s);
+	return p;
+}
+
+test("participant lists: a specialist list and a subcontractor list are found by what they are, other files are not", async () => {
+	const { participantDocs, PARTICIPANT_LIST } = await import("../src/main/tasks/roles-run.ts");
+	for (const ok of ["4.0_Speciālistu_saraksts.docx", "9.0_Apaksuznemeju_saraksts_2025_95.docx", "Apakšuzņēmēju saraksts.docx", "Specialistu saraksts.xlsx"]) assert.match(ok, PARTICIPANT_LIST, ok);
+	for (const no of ["Piezimes.docx", "Atbildibas_matrica.xlsx", "Specialistu_prasibas.docx"]) assert.doesNotMatch(no, PARTICIPANT_LIST, no);
+	const p = withLists("r6");
+	assert.deepEqual(participantDocs(p, loadState(p.outputDir)).map((d) => d.file).sort(), ["4.0_Speciālistu_saraksts.docx", "9.0_Apaksuznemeju_saraksts_2025_95.docx"]);
+});
+
+test("step 5 reads the people lists first, and a person from a list row arrives with that row as the quote", async () => {
+	const p = withLists("r7");
+	const seen = { prompt: "" };
+	const row = "Projektētājs/BIM autors | Mārtiņš Nikāzis | 3-01596";
+	const r = await suggestRoles(
+		p,
+		engineWith(reply([{ role: "Projektētājs/BIM autors", person: "Mārtiņš Nikāzis", company: "SIA Izdomātā", side: "projektesana", quote: row, file: "4.0_Speciālistu_saraksts.docx" }]), seen),
+		base,
+	);
+	assert.ok(r.ok && r.added === 1);
+	assert.ok(seen.prompt.indexOf("=== DOKUMENTS: 4.0_Speciālistu_saraksts.docx") < seen.prompt.indexOf("=== DOKUMENTS: PIP.docx"), "the lists come before the long requirement documents");
+	assert.ok(seen.prompt.includes("9.0_Apaksuznemeju_saraksts_2025_95.docx"));
+	assert.equal(seen.prompt.includes("Šis fails nav saraksts"), false);
+	const [it] = loadState(p.outputDir).rolePicks!.items;
+	assert.deepEqual([it.role, it.person, it.company, it.cite.file], ["Projektētājs/BIM autors", "Mārtiņš Nikāzis", "", "4.0_Speciālistu_saraksts.docx"], "the company the model added is not in the row, so it is dropped");
+});
+
+test("a long tender cannot push the people lists out of the prompt", async () => {
+	const { buildTaskPrompt, MAX_DOC_CHARS } = await import("../src/main/tasks/runner.ts");
+	const long = { file: "TS.docx", text: "x ".repeat(MAX_DOC_CHARS) };
+	const lists = [{ file: "4.0_Speciālistu_saraksts.docx", text: SPEC_LIST }];
+	assert.ok(buildTaskPrompt("U", "{}", [...lists, long]).includes("Mārtiņš Nikāzis"), "lists first: kept");
+	assert.equal(buildTaskPrompt("U", "{}", [long, ...lists]).includes("Mārtiņš Nikāzis"), false, "lists last: cut — which is why they go first");
+});

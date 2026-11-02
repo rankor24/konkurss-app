@@ -172,8 +172,8 @@ function docsForBlock(p: Project, s: ProjectState, block: BlockId): Outcome<{ do
 	if (!nol.ok) return nol;
 	const qa = docsByKind(p, s, ["qa"]);
 	const extra = extraDocs(p, s, "prasibas");
-	if (block === "dati") return { ok: true, docs: [...nol.docs, ...docsByKind(p, s, ["tehniska_specifikacija", "iub"]), ...extra] };
-	return { ok: true, docs: [...nol.docs, ...qa, ...extra] };
+	if (block === "dati") return { ok: true, docs: [...extra, ...nol.docs, ...docsByKind(p, s, ["tehniska_specifikacija", "iub"])] };
+	return { ok: true, docs: [...extra, ...nol.docs, ...qa] };
 }
 
 export type BlockResult = { rejected: number };

@@ -157,9 +157,13 @@ export function extraNote(s: ProjectState, page: SourcePage): string {
 	].join("\n");
 }
 
-/** Instructions and documents of a task, with the page's sources added. Without sources both come back unchanged. */
+/**
+ * Instructions and documents of a task, with the page's sources added. Without sources both come back unchanged.
+ * The sources go FIRST: a task prompt holds at most MAX_DOC_CHARS of documents and cuts what comes last,
+ * and a long tender would otherwise push a person's small, deliberate source out of the prompt.
+ */
 export function withExtras(p: Project, s: ProjectState, page: SourcePage, instructions: string, docs: DocInput[]): { instructions: string; docs: DocInput[] } {
 	const extra = extraDocs(p, s, page);
 	if (extra.length === 0) return { instructions, docs };
-	return { instructions: instructions + extraNote(s, page), docs: [...docs, ...extra] };
+	return { instructions: instructions + extraNote(s, page), docs: [...extra, ...docs] };
 }

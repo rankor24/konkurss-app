@@ -130,7 +130,7 @@ test("the agent sees only its own page's sources, each under a PAPILDU label, wi
 
 	const tender = [{ file: "Nolikums.docx", text: "Nolikuma teksts." }];
 	const w = withExtras(p, s, "aizpildit", "UZDEVUMS", tender);
-	assert.deepEqual(w.docs.map((d) => d.file), ["Nolikums.docx", "PAPILDU: Mans_BIP.txt"], "tender first, extras after");
+	assert.deepEqual(w.docs.map((d) => d.file), ["PAPILDU: Mans_BIP.txt", "Nolikums.docx"], "extras first: a prompt cuts what comes last, and a long tender must not push them out");
 	assert.ok(w.instructions.startsWith("UZDEVUMS") && w.instructions.includes("PAPILDU AVOTI"));
 	const same = withExtras(p, s, "parbaude", "UZDEVUMS", tender);
 	assert.deepEqual(same, { instructions: "UZDEVUMS", docs: tender }, "a page without sources gets exactly what it got before");

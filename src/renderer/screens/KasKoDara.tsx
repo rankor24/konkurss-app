@@ -66,7 +66,7 @@ function RoleSuggestions({ picks, builders, busy, agentOn, onSuggest, onAdd, onR
 				<h2 className="grow">Lomas, ko prasa konkurss</h2>
 				<button className="primary" disabled={!!busy || !agentOn} title={agentOn ? undefined : "Aģents ir izslēgts"} onClick={onSuggest}>{busy === "suggest" ? "Lasu dokumentus…" : "Ieteikt lomas no konkursa"}</button>
 			</div>
-			<p className="hint">Aģents izlasa PIP, nolikumu un specifikāciju un piedāvā lomas ar citātu. Ja dokuments pats nosauc uzņēmumu vai cilvēku, tie tiek piedāvāti līdzi (tikai tad, ja tie stāv citātā). Tabulā nekas neparādās, kamēr nenospied pogu.</p>
+			<p className="hint">Aģents izlasa PIP, nolikumu, specifikāciju un konkursā jau esošos speciālistu un apakšuzņēmēju sarakstus un piedāvā lomas ar citātu. Ja dokuments pats nosauc uzņēmumu vai cilvēku, tie tiek piedāvāti līdzi (tikai tad, ja tie stāv citātā). Tabulā nekas neparādās, kamēr nenospied pogu.</p>
 			{!agentOn && <Banner>Aģents ir izslēgts — lomas jāieraksta pašam.</Banner>}
 			{picks && (
 				<div className="hint">

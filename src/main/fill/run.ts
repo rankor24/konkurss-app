@@ -113,11 +113,11 @@ export async function fillFromTender(d: RunDeps, engine: Engine, base: Base, key
 	const cellDocs0 = [...(nol.ok ? nol.docs : []), ...docsByKind(d.project, s, [...FILL_DOCS_CELLS])];
 	const secDocs0 = docsByKind(d.project, s, [...FILL_DOCS_SECTIONS]);
 	if (secDocs0.length === 0 && cellDocs0.length === 0) return { ok: false, error: "Nav nolasītu konkursa dokumentu (1. Dokumenti)." };
-	// the page's extra sources go after the tender documents: the tender is read first, and the second pass below reaches them by topic
+	// the page's extra sources go first: a prompt holds ~700k characters and cuts what comes last, and this tender is longer than that
 	const extra = extraDocs(d.project, s, "aizpildit");
 	const note = extraNote(s, "aizpildit");
-	const cellDocs = [...cellDocs0, ...extra];
-	const secDocs = [...secDocs0, ...extra];
+	const cellDocs = [...extra, ...cellDocs0];
+	const secDocs = [...extra, ...secDocs0];
 
 	let rejected = 0;
 	let committed = 0;
