@@ -32,7 +32,7 @@ const write = (path: string, text: string) => {
 const LONG = "Iepriekšējais BIP: garantijas laiks ir pieci gadi no nodošanas dienas, to apliecina pretendents. ".repeat(3);
 
 test("every page with an agent task has its own list and says what the agent does with it", () => {
-	assert.deepEqual(SOURCE_PAGES, ["versija", "prasibas", "aizpildit", "parbaude", "rezultats"]);
+	assert.deepEqual(SOURCE_PAGES, ["versija", "prasibas", "kas", "aizpildit", "parbaude", "rezultats"]);
 	for (const p of SOURCE_PAGES) assert.ok(SOURCE_USE[p].length > 20, p);
 	assert.equal(isSourcePage("aizpildit"), true);
 	assert.equal(isSourcePage("dokumenti"), false, "pages where no model reads documents have no list");

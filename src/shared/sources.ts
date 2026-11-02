@@ -2,14 +2,15 @@
 import type { TextStatus } from "./state.js";
 
 /** The pages that have an agent task reading documents. Each page keeps its own list. */
-export type SourcePage = "versija" | "prasibas" | "aizpildit" | "parbaude" | "rezultats";
+export type SourcePage = "versija" | "prasibas" | "kas" | "aizpildit" | "parbaude" | "rezultats";
 
-export const SOURCE_PAGES: SourcePage[] = ["versija", "prasibas", "aizpildit", "parbaude", "rezultats"];
+export const SOURCE_PAGES: SourcePage[] = ["versija", "prasibas", "kas", "aizpildit", "parbaude", "rezultats"];
 
 /** What the agent of each page does with the sources, in the words shown above the list. */
 export const SOURCE_USE: Record<SourcePage, string> = {
 	versija: "Komisijas atbilžu un iesniegšanas termiņa nolasīšanā aģents meklē arī šajos failos.",
 	prasibas: "Prasību nolasīšanā (dati, dokumenti, pieredze, speciālisti, vērtēšana) aģents meklē arī šajos failos.",
+	kas: "Lomu ieteikumos („Ieteikt lomas no konkursa”) aģents meklē arī šajos failos — piemēram, kolēģa lomu sarakstā vai iepriekšējā projektā.",
 	aizpildit: "BIP sadaļu, projekta datu, atbildības matricas LOD un tehniskā piedāvājuma pielāgojumu meklēšanā aģents lasa arī šos failus — piemēram, mūsu iepriekšējo BIP.",
 	parbaude: "Tehniskā piedāvājuma salīdzināšanā ar specifikāciju aģents šos failus ņem kā papildu prasību avotu.",
 	rezultats: "Pēc uzvaras veicamo darbību meklēšanā aģents lasa arī šos failus.",

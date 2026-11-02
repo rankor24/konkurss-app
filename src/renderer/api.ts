@@ -1,5 +1,5 @@
 // Typed access to the preload bridge. One generic invoke, small typed wrappers on top.
-import type { BlockId, Choices, Cited, DocKind, FillSheet, ProjectState, QaItem, Roles, StepId, StepStatus, Variant } from "../shared/state";
+import type { BlockId, Choices, Cited, DocKind, FillSheet, ProjectState, QaItem, RoleSuggestion, Roles, StepId, StepStatus, Variant } from "../shared/state";
 import type { Expiry, Registers } from "../shared/registers";
 import type { LeakReport } from "../shared/leaks";
 import type { DepItem } from "../shared/deps";
@@ -120,6 +120,8 @@ export const api = {
 	roles: {
 		get: (id: string) => call<Roles>("roles:get", id),
 		save: (id: string, roles: Roles) => call<Roles>("roles:save", id, roles),
+		suggest: (id: string) => call<TaskOutcome<{ added: number; already: number; rejected: number }>>("roles:suggest", id),
+		decide: (id: string, suggestion: string, decision: RoleSuggestion["decision"]) => call<void>("roles:decide", id, suggestion, decision),
 	},
 	fill: {
 		templates: (id: string) => call<{ key: string; rel: string; kind: string }[]>("fill:templates", id),

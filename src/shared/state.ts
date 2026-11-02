@@ -174,6 +174,26 @@ export interface Roles {
 	build: Record<string, RoleRow[]>;
 }
 
+/** A role the tender asks for, read from the documents with its quote. The people are never suggested: only a person fills those. */
+export interface RoleSuggestion {
+	id: string;
+	role: string;
+	/** būvprojekta daļu kodi, only when the quote itself names them */
+	part: string;
+	/** where the document puts the role; "nav_skaidrs" leaves the choice to the person */
+	side: "projektesana" | "buvdarbi" | "nav_skaidrs";
+	cite: Citation;
+	/** "added" = copied into the roles table, "rejected" = dismissed; both stay dismissed on the next reading */
+	decision: "added" | "rejected" | null;
+}
+export interface RolePicks {
+	items: RoleSuggestion[];
+	readAt: string;
+	/** roles the documents ask for that were already in the table, and quotes the app could not find in the text */
+	already: number;
+	rejected: number;
+}
+
 export type SheetStatus = "source" | "missing" | "na" | "manual";
 export interface SheetItem {
 	slotId: string;
@@ -254,6 +274,8 @@ export interface ProjectState {
 	proofs?: { collectedAt: string; copied: number; missing: number };
 	/** files and folders a person added for the agent of a page */
 	sources?: Partial<Record<SourcePage, ExtraSource[]>>;
+	/** roles the agent suggested on step 5 */
+	rolePicks?: RolePicks;
 	/** value sheets by template key ("root:rel") */
 	fills: Record<string, FillSheet>;
 	/** later phases keep their data under their own keys */

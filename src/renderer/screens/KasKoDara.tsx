@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import type { Roles, RoleRow } from "../../shared/state";
+import type { Roles, RoleRow, RoleSuggestion } from "../../shared/state";
 import type { Specialist } from "../../shared/registers";
 import type { Project } from "../../shared/types";
 import { api, type StateBundle } from "../api";
-import { Banner, ScreenHead, useAction } from "../ui";
+import { Banner, ScreenHead, useAction, useAgentOn } from "../ui";
 import { KasV1 } from "./KasV1";
+import { ExtraSources } from "./Sources";
 
 const ROLE_SUGGESTIONS = [
 	"Projekta informācijas vadītājs / BIM koordinators",
@@ -46,6 +47,51 @@ function RoleTable({ rows, onChange, people, defaultCompany }: { rows: RoleRow[]
 	);
 }
 
+const SIDE_TEXT: Record<RoleSuggestion["side"], string> = { projektesana: "projektētāja puse", buvdarbi: "būvnieka puse", nav_skaidrs: "dokuments nepasaka, kuras puses loma" };
+
+/** Roles the agent read from the tender, each with its quote. Nothing goes into the table until a person presses a button; people's names are never suggested. */
+function RoleSuggestions({ picks, builders, busy, agentOn, onSuggest, onAdd, onReject }: {
+	picks: NonNullable<StateBundle["state"]["rolePicks"]> | undefined;
+	builders: string[];
+	busy: string;
+	agentOn: boolean;
+	onSuggest: () => void;
+	onAdd: (s: RoleSuggestion, target: string) => void;
+	onReject: (s: RoleSuggestion) => void;
+}) {
+	const open = (picks?.items ?? []).filter((i) => !i.decision);
+	return (
+		<div className="card">
+			<div className="row">
+				<h2 className="grow">Lomas, ko prasa konkurss</h2>
+				<button className="primary" disabled={!!busy || !agentOn} title={agentOn ? undefined : "Aģents ir izslēgts"} onClick={onSuggest}>{busy === "suggest" ? "Lasu dokumentus…" : "Ieteikt lomas no konkursa"}</button>
+			</div>
+			<p className="hint">Aģents izlasa PIP, nolikumu un specifikāciju un piedāvā lomas ar citātu. Tabulā nekas neparādās, kamēr nenospied pogu; vārdus un uzņēmumus ieraksti pats.</p>
+			{!agentOn && <Banner>Aģents ir izslēgts — lomas jāieraksta pašam.</Banner>}
+			{picks && (
+				<div className="hint">
+					Nolasīts {new Date(picks.readAt).toLocaleTimeString("lv-LV", { hour: "2-digit", minute: "2-digit" })} · {open.length} ieteikumi{picks.already ? ` · ${picks.already} jau ir tabulā` : ""}{picks.rejected ? ` · ${picks.rejected} atmesti (citāts dokumentā nav atrasts)` : ""}
+				</div>
+			)}
+			{open.map((s) => (
+				<div key={s.id} className="src-row">
+					<div className="row">
+						<strong>{s.role}</strong>
+						{s.part && <span className="chip mono">{s.part}</span>}
+						<span className="hint">{SIDE_TEXT[s.side]}</span>
+						<span className="grow" />
+						<button className={s.side === "projektesana" ? "primary" : ""} disabled={!!busy} onClick={() => onAdd(s, "design")}>→ Projektēšana (mēs)</button>
+						{builders.map((b) => <button key={b} className={s.side === "buvdarbi" && builders.length === 1 ? "primary" : ""} disabled={!!busy} onClick={() => onAdd(s, b)}>→ {b}</button>)}
+						<button disabled={!!busy} onClick={() => onReject(s)}>Atmest</button>
+					</div>
+					<div className="quote-pop">„{s.cite.quote}” <span className="hint">— {s.cite.file}</span></div>
+				</div>
+			))}
+			{picks && open.length === 0 && <div className="hint">Nav neatrisinātu ieteikumu.</div>}
+		</div>
+	);
+}
+
 /** 5. Kas ko dara for V2/V3: our design-side roles, and a separate construction-side table per builder. */
 export function KasKoDara({ project, bundle, reload }: { project: Project; bundle: StateBundle; reload: () => Promise<void> }) {
 	const variant = bundle.state.variant?.value ?? project.variant;
@@ -54,6 +100,7 @@ export function KasKoDara({ project, bundle, reload }: { project: Project; bundl
 	const [company, setCompany] = useState("");
 	const [dirty, setDirty] = useState(false);
 	const act = useAction();
+	const [agentOn] = useAgentOn();
 	useEffect(() => {
 		api.registers.get().then((r) => {
 			setPeople(r.registers.specialists);
@@ -61,7 +108,7 @@ export function KasKoDara({ project, bundle, reload }: { project: Project; bundl
 		});
 	}, []);
 
-	const head = <ScreenHead title="5. Kas ko dara" what="Šeit savieno konkursa prasības ar mūsu cilvēkiem. Katra izvēle var radīt papildu dokumentus — app pateiks, kādus." />;
+	const head = <ScreenHead agent title="5. Kas ko dara" what="Šeit savieno konkursa prasības ar mūsu cilvēkiem. Katra izvēle var radīt papildu dokumentus — app pateiks, kādus." />;
 	if (variant === "V1") return <KasV1 project={project} bundle={bundle} reload={reload} />;
 	if (variant !== "V2" && variant !== "V3") {
 		return (
@@ -78,10 +125,29 @@ export function KasKoDara({ project, bundle, reload }: { project: Project; bundl
 	const save = () => act.run("save", async () => void (await api.roles.save(project.id, roles)), async () => { setDirty(false); await reload(); });
 	const builders = project.builders;
 
+	const suggest = () => act.run("suggest", () => api.roles.suggest(project.id), reload);
+	// the row goes into the table and is saved at once, so the suggestion cannot vanish while the row exists only on screen
+	const addSuggested = (s: RoleSuggestion, target: string) =>
+		act.run(
+			"add",
+			async () => {
+				const row: RoleRow = { ...blank(), role: s.role, part: s.part };
+				const next: Roles = target === "design" ? { ...roles, design: [...roles.design, row] } : { ...roles, build: { ...roles.build, [target]: [...(roles.build[target] ?? []), row] } };
+				await api.roles.save(project.id, next);
+				await api.roles.decide(project.id, s.id, "added");
+				setRoles(next);
+				setDirty(false);
+			},
+			reload,
+		);
+	const rejectSuggested = (s: RoleSuggestion) => act.run("reject", async () => void (await api.roles.decide(project.id, s.id, "rejected")), reload);
+
 	return (
 		<div className="screen">
 			{head}
 			{act.error && <Banner kind="critical">{act.error}</Banner>}
+			<ExtraSources project={project} bundle={bundle} reload={reload} page="kas" />
+			<RoleSuggestions picks={bundle.state.rolePicks} builders={builders} busy={act.busy} agentOn={agentOn} onSuggest={suggest} onAdd={addSuggested} onReject={rejectSuggested} />
 			{builders.length === 0 && <Banner>Konkursam nav norādīts neviens būvnieks. Pievieno tos 1. solī (Konkursa veids un būvnieki).</Banner>}
 			<div className="row">
 				<span className="hint">Projektēšanas puse ir kopīga visiem būvniekiem; būvdarbu puse ir atsevišķa katram — viena būvnieka dati nekad nenonāk cita būvnieka dokumentos.</span>

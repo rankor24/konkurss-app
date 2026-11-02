@@ -7,6 +7,7 @@ import type { AppContext } from "../context.js";
 import * as F from "../fill/run.js";
 import { loadState, updateState } from "../project-state.js";
 import { toolsConfig } from "../pytools.js";
+import { decideRole, suggestRoles } from "../tasks/roles-run.js";
 import { emptyRegisters, expiring, importFromSkillData, type Registers } from "../registers/registers.js";
 
 export function registerPhase3(ctx: AppContext, toolsScript: string): void {
@@ -54,6 +55,12 @@ export function registerPhase3(ctx: AppContext, toolsScript: string): void {
 		updateState(ctx.project(projectId).outputDir, (s) => void (s.roles = roles));
 		return ctx.state(projectId).roles;
 	});
+	// roles the tender asks for, with quotes: suggestions only, the table is filled by a person
+	ipcMain.handle("roles:suggest", (_e, projectId: string) => {
+		const { engine, base } = taskBase(projectId);
+		return suggestRoles(ctx.project(projectId), engine, base);
+	});
+	ipcMain.handle("roles:decide", (_e, projectId: string, id: string, decision: "added" | "rejected" | null) => decideRole(ctx.project(projectId), id, decision));
 
 	// ----- fill -----
 	ipcMain.handle("fill:templates", (_e, projectId: string) => F.templateCandidates(ctx.state(projectId)));

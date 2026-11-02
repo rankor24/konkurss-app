@@ -14,7 +14,7 @@ const INVOKE = new Set([
 	"versions:compareTemplates", "versions:readDeadline", "versions:setDeadline",
 	"req:read", "req:confirm", "req:edit", "req:secondPass",
 	"registers:get", "registers:save", "registers:import",
-	"roles:get", "roles:save",
+	"roles:get", "roles:save", "roles:suggest", "roles:decide",
 	"fill:forms", "fill:vocabulary", "fill:bindForm", "fill:setBinding", "fill:confirmBinding", "fill:notApplicable", "fill:generateForm", "fill:techEdit", "fill:techGenerate", "fill:templates", "fill:codeFill", "fill:setItem", "fill:inspect", "fill:preview", "fill:bip", "fill:matrica", "fill:builderCopies", "fill:leaks", "fill:valueSheet", "fill:generate", "fill:techProposal", "fill:techDecision",
 	"feasibility:get", "feasibility:save", "mapping:get", "mapping:save", "finance:get", "finance:save",
 	"proofs:plan", "proofs:collect",
