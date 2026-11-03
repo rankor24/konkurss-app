@@ -3,9 +3,10 @@ import type { Engine, McpLaunch } from "./types.js";
 import { createClaudeEngine } from "./claude.js";
 import { createCodexEngine } from "./codex.js";
 import { createGrokEngine } from "./grok.js";
+import { createPiEngine, type PiDeps } from "./pi.js";
 
-export function createEngines(getClaudeKey: () => string | null): Record<EngineId, Engine> {
-	return { claude: createClaudeEngine(getClaudeKey), codex: createCodexEngine(), grok: createGrokEngine() };
+export function createEngines(getClaudeKey: () => string | null, pi: PiDeps): Record<EngineId, Engine> {
+	return { claude: createClaudeEngine(getClaudeKey), codex: createCodexEngine(), grok: createGrokEngine(), pi: createPiEngine(pi) };
 }
 
 /**
@@ -34,7 +35,7 @@ export function mcpLaunch(p: {
 	return { command: process.execPath, args: [p.serverJs], env };
 }
 
-/** Shared framing so all three engines get the same rules (mistake catalogue A1–A3, A10). */
+/** Shared framing so all four engines get the same rules (mistake catalogue A1–A3, A10). */
 export function buildPrompt(project: Project, userText: string): string {
 	return [
 		"Tu strādā SIA \"BŪVDIZAINS\" konkursu app. Atbildi latviski.",

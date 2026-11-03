@@ -1,12 +1,45 @@
 // Types shared by main process, tool server and renderer.
 
-export type EngineId = "claude" | "codex" | "grok";
+import type { PiProviderId } from "../agent-pi/providers.js";
+
+export type { PiProviderId };
+
+export type EngineId = "claude" | "codex" | "grok" | "pi";
 
 export const ENGINE_LABELS: Record<EngineId, string> = {
 	claude: "Claude (API atslēga)",
 	codex: "Codex (ChatGPT abonements)",
 	grok: "Grok (SuperGrok abonements)",
+	pi: "pi (viens aģents visiem modeļiem)",
 };
+
+/** The providers behind the pi engine, as the person sees them. */
+export const PI_PROVIDER_LABELS: Record<PiProviderId, string> = {
+	anthropic: "Claude (API atslēga)",
+	"openai-codex": "ChatGPT (abonements)",
+	xai: "Grok (SuperGrok abonements)",
+};
+
+/** What the settings screen shows per pi provider. */
+export interface PiProviderStatus {
+	id: PiProviderId;
+	configured: boolean;
+	/** "api_key" for Claude, "oauth" for the subscriptions */
+	auth: "api_key" | "oauth";
+	/** Plain Latvian: signed in, or what to do next */
+	reason: string;
+	models: { id: string; name: string }[];
+	defaultModel: string | null;
+}
+
+/** One step of a sign-in the person is going through, sent while the sign-in window is open. */
+export type PiLoginNotice =
+	| { provider: PiProviderId; type: "url"; url: string }
+	| { provider: PiProviderId; type: "code"; userCode: string; url: string }
+	| { provider: PiProviderId; type: "info"; message: string }
+	| { provider: PiProviderId; type: "ask"; message: string }
+	| { provider: PiProviderId; type: "done" }
+	| { provider: PiProviderId; type: "error"; message: string };
 
 /** What the settings screen shows per engine. `reason` is plain Latvian for the lietvede. */
 export interface EngineStatus {
@@ -58,6 +91,10 @@ export interface FolderSummary {
 export interface Settings {
 	engineForTasks: EngineId;
 	models: Partial<Record<EngineId, string>>;
+	/** which provider the pi engine uses; Claude when not chosen */
+	piProvider?: PiProviderId;
+	/** the model chosen for each pi provider; empty = the provider's default */
+	piModels?: Partial<Record<PiProviderId, string>>;
 	hasClaudeKey: boolean;
 	/** the "Aģents" switch on every page; anything but false means on */
 	agentOn?: boolean;

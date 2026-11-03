@@ -6,6 +6,7 @@ const INVOKE = new Set([
 	"folders:pick", "folders:pickFile", "folders:summary", "folders:open",
 	"settings:get", "settings:save", "settings:setClaudeKey",
 	"engines:status", "engines:login",
+	"pi:providers", "pi:login", "pi:loginAnswer", "pi:loginCancel", "pi:logout",
 	"agent:run", "agent:stop", "audit:tail",
 	"state:get",
 	"files:scan", "files:extract", "files:setKind", "files:text", "files:openOne",
@@ -24,7 +25,7 @@ const INVOKE = new Set([
 	"deps:status", "grok:update",
 	"sources:pick", "sources:add", "sources:refresh", "sources:remove", "sources:note", "sources:open",
 ]);
-const EVENTS = new Set(["agent:event", "files:progress", "task:text", "activity"]);
+const EVENTS = new Set(["agent:event", "files:progress", "task:text", "activity", "pi:login"]);
 
 contextBridge.exposeInMainWorld("konkurss", {
 	invoke: (channel: string, ...args: unknown[]) => {

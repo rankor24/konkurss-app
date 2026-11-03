@@ -8,6 +8,9 @@ import type { Engine, RunOptions } from "./engines/types.js";
 import { pyConfigFromEnv, type PyConfig } from "../mcp/python.js";
 import { loadState } from "./project-state.js";
 import { withActivity } from "./activity.js";
+import type { PiRuntime } from "../agent-pi/index.js";
+import { isPiProvider } from "../agent-pi/providers.js";
+import type { PiSelection } from "./engines/pi.js";
 
 /** Shown wherever a model task is refused because the switch is off. */
 export const AGENT_OFF = "Aģents ir izslēgts (slēdzis „Aģents” lapas augšā). Ieslēdz to, lai app lasītu dokumentus un rakstītu tekstus; ar izslēgtu aģentu darbojas tikai reģistri un lomu tabula.";
@@ -21,6 +24,7 @@ export interface Paths {
 export class AppContext {
 	readonly engines: Record<EngineId, Engine>;
 	readonly py: PyConfig;
+	private piRuntime: Promise<PiRuntime> | null = null;
 	/** run folder → project id, so the activity panel knows which tender a run belongs to */
 	private readonly runDirs = new Map<string, string>();
 
@@ -29,8 +33,31 @@ export class AppContext {
 		readonly paths: Paths,
 		readonly emit: (channel: string, ...args: unknown[]) => void,
 	) {
-		this.engines = createEngines(() => store.claudeKey());
+		this.engines = createEngines(() => store.claudeKey(), { runtime: () => this.pi(), selection: () => this.piSelection() });
 		this.py = { ...pyConfigFromEnv(process.env), skillsDir: paths.skillsDir };
+	}
+
+	/**
+	 * The pi runtime (models, sign-in tokens): built on first use, because importing pi takes over a second.
+	 * Sign-in tokens live encrypted in the data folder; the Claude key is the one the Claude engine uses.
+	 */
+	pi(): Promise<PiRuntime> {
+		this.piRuntime ??= import("../agent-pi/index.js").then((m) =>
+			m.createPiRuntime({
+				path: this.store.filePath("pi-credentials.bin"),
+				seal: this.store.seal(),
+				apiKey: (provider) => (provider === "anthropic" ? this.store.claudeKey() : null),
+				identity: { name: "Konkursu App", url: "https://buvdizains.lv" },
+			}),
+		);
+		return this.piRuntime;
+	}
+
+	/** Provider and model the pi engine uses, from Iestatījumi. Claude when nothing is chosen. */
+	piSelection(): PiSelection {
+		const s = this.store.settings();
+		const provider = isPiProvider(s.piProvider) ? s.piProvider : "anthropic";
+		return { provider, model: s.piModels?.[provider]?.trim() || undefined };
 	}
 
 	project(id: string): Project {

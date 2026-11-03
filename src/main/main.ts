@@ -11,6 +11,7 @@ import { registerPhase4 } from "./ipc/phase4.js";
 import { registerPhase5 } from "./ipc/phase5.js";
 import { registerPhase6 } from "./ipc/phase6.js";
 import { registerSources } from "./ipc/sources.js";
+import { registerPi } from "./ipc/pi.js";
 import { existsSync } from "node:fs";
 
 const here = import.meta.dirname; // dist/main
@@ -43,6 +44,7 @@ registerPhase4(ctx, toolsScript);
 registerPhase5(ctx, toolsScript);
 registerPhase6(ctx, toolsScript);
 registerSources(ctx);
+registerPi(ctx);
 
 function createWindow(): void {
 	win = new BrowserWindow({

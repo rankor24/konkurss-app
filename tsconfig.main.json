@@ -11,5 +11,5 @@
 		"sourceMap": true,
 		"types": ["node"]
 	},
-	"include": ["src/main/**/*", "src/mcp/**/*", "src/shared/**/*"]
+	"include": ["src/main/**/*", "src/agent-pi/**/*", "src/mcp/**/*", "src/shared/**/*"]
 }

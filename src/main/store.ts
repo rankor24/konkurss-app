@@ -83,6 +83,16 @@ export class Store {
 		return this.settings();
 	}
 
+	/** A file in the app's data folder, for modules that keep their own data (the pi sign-in tokens). */
+	filePath(name: string): string {
+		return join(this.dir, name);
+	}
+
+	/** The operating system encryption this store uses for the Claude key. */
+	seal(): Crypto {
+		return this.crypto;
+	}
+
 	setClaudeKey(key: string): void {
 		const k = key.trim();
 		if (!k.startsWith("sk-ant-")) throw new Error("Tā neizskatās pēc Claude API atslēgas (sākas ar sk-ant-).");

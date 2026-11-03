@@ -4,7 +4,7 @@ import type { EngineId, ToolKind } from "../../shared/types";
 import { onActivity } from "../api";
 
 const MAX = 600;
-const ENGINE: Record<EngineId, string> = { claude: "Claude", codex: "Codex", grok: "Grok" };
+const ENGINE: Record<EngineId, string> = { claude: "Claude", codex: "Codex", grok: "Grok", pi: "pi" };
 const KIND_ICON: Record<ToolKind | "thinking", string> = { read: "▤", search: "⌕", edit: "✎", shell: ">_", web: "◎", plan: "☰", other: "·", thinking: "◌" };
 
 /** Lines in the order they happened, oldest first. A line with a step replaces the earlier line of that step (a tool call that finished, a block of thinking that grew). */

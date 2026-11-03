@@ -24,7 +24,8 @@ node --import tsx scripts/engine-smoke.mts codex "E:\BV BIM\Paraugmodeli\<konkur
 
 ```
 src/main/        Electron main: window, IPC, store (projects, settings, encrypted Claude key)
-src/main/engines Claude (Agent SDK + API key), Codex (codex-sdk + ChatGPT login), Grok (grok CLI + SuperGrok login)
+src/main/engines Claude (Agent SDK + API key), Codex (codex-sdk + ChatGPT login), Grok (grok CLI + SuperGrok login), pi (own agent loop on pi 1.4: Claude key, ChatGPT or SuperGrok sign-in)
+src/agent-pi        the pi agent loop, tender-neutral (liftable into a shared package): models, sign-in, MCP tools, run, event mapper
 src/mcp/         konkurss-tools stdio MCP server + path guard + audit — the only way any engine touches files
 src/renderer/    React UI (Latvian)
 resources/plugin build-time copy of the skills (not committed)

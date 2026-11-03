@@ -7,7 +7,7 @@ import type { Activity } from "../shared/activity";
 import type { PreviewBlock } from "../shared/preview";
 import type { ExtraSource, SourcePage } from "../shared/sources";
 import type { CheckRun, Closeout, Finding, SignatureRow, SignatureVerdict } from "../shared/checks";
-import type { EngineId, EngineStatus, FolderSummary, Project, RunEvent, Settings } from "../shared/types";
+import type { EngineId, EngineStatus, FolderSummary, PiLoginNotice, PiProviderId, PiProviderStatus, Project, RunEvent, Settings } from "../shared/types";
 
 interface Bridge {
 	invoke(channel: string, ...args: unknown[]): Promise<unknown>;
@@ -72,6 +72,14 @@ export const api = {
 	engines: {
 		status: () => call<EngineStatus[]>("engines:status"),
 		login: (id: EngineId) => call<void>("engines:login", id),
+	},
+	pi: {
+		providers: () => call<PiProviderStatus[]>("pi:providers"),
+		login: (provider: PiProviderId) => call<void>("pi:login", provider),
+		loginAnswer: (text: string) => call<void>("pi:loginAnswer", text),
+		loginCancel: () => call<void>("pi:loginCancel"),
+		logout: (provider: PiProviderId) => call<void>("pi:logout", provider),
+		onLogin: (cb: (n: PiLoginNotice) => void) => window.konkurss.on("pi:login", cb as (...a: unknown[]) => void),
 	},
 	agent: {
 		run: (req: { runId: string; projectId: string; engine: EngineId; text: string }) => call<void>("agent:run", req),

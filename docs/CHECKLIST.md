@@ -107,3 +107,18 @@ Also done in phase 1 (not separate plan rows): Grok prompt via file (Windows 32k
 | 6.7 | Language test: UI strings contain none of JSON, IPC, regex, profils, validācija, ekstrakcija, hash | test | ✅ | `phase6.test.ts` › language: every string literal and JSX text in `src/renderer`, `src/main` and `shared/hints.ts` (AST scan, comments excluded; model instructions exempt). It found and I fixed 4 leaks: `registers.prev.json`, `project.prev.json`, „Atbildē nav JSON objekta”, „derīgs JSON” in the error shown after two unreadable model answers. |
 | 6.8 | Hardcoded-data test: no tender data (IDs, person names, cert numbers) in src outside fixtures | test | ✅ | `phase6.test.ts` › no tender IDs, person names, certificate numbers, registration numbers or builder names in any string of `src/`. It found and I fixed 3: „NVA 2025/122” twice in check texts and „UPB, Pillar” as a placeholder. |
 | 6.9 | Colleague trial | 🟡 Boris | 🟡 | Boris: install `release/Konkursu App Setup 0.1.0.exe` on a colleague's PC (no Python), follow `docs/UZSTADISANA.md`, create a project from a real tender folder, run steps 1–3. Claude cannot do this (no clean PC; no window testing by house rule). |
+
+## Phase 7 — pi engine (2026-11-03)
+
+One agent loop for the app family (decision 2026-11-03). The three vendor engines stay until Boris approves removing them after a live run on a real tender.
+
+| ID | Task | Acceptance | Status | Evidence |
+|---|---|---|---|---|
+| 7.1 | `src/agent-pi/`: pi 1.4 agent loop, tender-neutral (providers, credential store, models, sign-in, MCP tools, run, event mapper) | typecheck; imports nothing konkurss-specific except the `RunEvent` type | ✅ | `npm run typecheck`; `src/agent-pi/index.ts` |
+| 7.2 | pi is a fourth `Engine` (`EngineId` "pi"); model tasks and the Aģents chat run through it; same nine tools, same tool server | full run on pi's own faux model through the real konkurss-tools server | ✅ | `test/pi-run.test.ts`: read inside, refused outside the tender folders, answer, provider error raw, step limit |
+| 7.3 | `piEvents` mapper (turn, text, thinking, tool, tool_result, done, error) | pure mapper on pi's AgentEvent shapes | ✅ | `test/pi-events.test.ts` |
+| 7.4 | Claude: API key only, from the app's Windows-encrypted key store; Claude.ai OAuth refused | store test | ✅ | `test/pi-engine.test.ts` › Claude: a subscription token is refused… |
+| 7.5 | ChatGPT and SuperGrok sign-in through pi (`Models.login`), tokens encrypted at rest, environment keys ignored | store + interaction tests; real sign-in = 🟡 Boris | 🟡 | `test/pi-engine.test.ts` (tokens encrypted, auth state, sign-in mapping); the actual browser sign-in is Boris's |
+| 7.6 | Settings: pi selectable as task engine, provider + model, sign-in / sign-out buttons; activity panel shows pi runs | typecheck, static render | 🟡 | `PiPanel.tsx`, `Engines.tsx`; a click in the window = 🟡 Boris |
+| 7.7 | Packaged app loads pi | exe built, pi imported from the asar under Electron's Node | ✅ | `releasewin-unpackedKonkursu App.exe`; asar holds `dist/agent-pi` + `@earendil-works/*`; `ELECTRON_RUN_AS_NODE` import lists the three providers' models |
+| 7.8 | Live run on a real tender with each provider ("Aizpildīt" on VUGD 2) | live | ⬜ | Boris; `scripts/engine-smoke.mts pi …` for a cheap first try |
