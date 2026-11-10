@@ -1,6 +1,11 @@
 // Typed access to the preload bridge. One generic invoke, small typed wrappers on top.
 import type { BlockId, Choices, Cited, DocKind, FillSheet, ProjectState, QaItem, RoleSuggestion, Roles, StepId, StepStatus, Variant } from "../shared/state";
 import type { Expiry, Registers } from "../shared/registers";
+import type { Builder, HarvestRun, StatementTemplate, Subcontractor, TrackerRow } from "../shared/library";
+import type { PriceSheet } from "../shared/pricing";
+import type { TenderProfile } from "../shared/profile";
+import type { PackManifest, Readiness } from "../shared/pack";
+import type { BoardRow, BoardStatus } from "../shared/board";
 import type { LeakReport } from "../shared/leaks";
 import type { DepItem } from "../shared/deps";
 import type { Activity } from "../shared/activity";
@@ -37,11 +42,40 @@ export interface StateBundle {
 	warnings: string[];
 	editions: { candidates: string[]; guess: { original?: string; amended?: string } };
 }
+export interface PriceView {
+	sheet: PriceSheet;
+	totals: { lines: { id: string; directCents: number; totalCents: number; differs: boolean }[]; designCents: number; auCents: number; allCents: number; directCents: number; marginCents: number; bySub: { by: string; cents: number }[] };
+	history: (TrackerRow & { score: number })[];
+	trackerLoaded: boolean;
+}
+export interface PackView {
+	manifest: PackManifest;
+	packDir: string;
+	workDir: string;
+	tenderDir: string;
+	targetDir: string;
+	targetExists: boolean;
+	readiness: Readiness;
+	existing: { recipient: string; number: string | null; stem: string; exts: string[]; kind: string }[];
+	existingDir: string | null;
+}
+export interface LibraryView {
+	tendersRoot: string | null;
+	libraryDir: string;
+	harvest: HarvestRun | null;
+	builders: Builder[];
+	subcontractors: Subcontractor[];
+	trackerStats: { sheet: string; rows: number; submitted: number; won: number; lost: number; decided: Record<string, number> }[];
+	trackerRows: number;
+	files: { tracker: string | null; subcontractors: string | null };
+}
 export type SourceOutcome = { ok: true; source: ExtraSource } | { ok: false; error: string };
 export type TaskOutcome<T> = ({ ok: true } & T) | { ok: false; error: string };
 export type Impact = "kriterijs" | "prasiba" | "redakcionala";
 
 export const onActivity = (cb: (a: Activity) => void) => window.konkurss.on("activity", cb as (...a: unknown[]) => void);
+/** Progress lines of long tasks; `scope` is a project id, or "library" / "board" for app-wide tasks. */
+export const onTaskText = (cb: (scope: string, text: string) => void) => window.konkurss.on("task:text", (scope, text) => cb(String(scope), String(text)));
 
 export const api = {
 	projects: {
@@ -125,6 +159,46 @@ export const api = {
 		save: (r: Registers) => call<{ registers: Registers; expiring: Expiry[] }>("registers:save", r),
 		import: (replace: boolean) => call<TaskOutcome<{ specialists: number; objects: number; fields: number }>>("registers:import", replace),
 	},
+	profile: {
+		read: (id: string) => call<TaskOutcome<{ profile: TenderProfile }>>("profile:read", id),
+		save: (id: string, p: TenderProfile) => call<TenderProfile>("profile:save", id, p),
+	},
+	pack: {
+		get: (id: string) => call<PackView>("pack:get", id),
+		assemble: (id: string) => call<TaskOutcome<{ copied: string[]; kept: string[]; missing: string[] }>>("pack:assemble", id),
+		generate: (id: string, itemId: string) => call<TaskOutcome<{ file: string }>>("pack:generate", id, itemId),
+		identity: (id: string) => call<{ problems: { file: string; kind: string; detail: string; quote: string }[]; checked: number; dirs: string[] }>("pack:identityFolder", id),
+		anonymity: (id: string) => call<{ problems: { file: string; kind: string; detail: string; quote: string }[]; devize: string | null; checked: number; unread: string[]; dirs: string[] }>("pack:anonymity", id),
+		inherit: (id: string, fromId: string) => call<ProjectState>("projects:inherit", id, fromId),
+	},
+	price: {
+		get: (id: string) => call<PriceView>("price:get", id),
+		save: (id: string, s: PriceSheet) => call<PriceView>("price:save", id, s),
+		import: (id: string) => call<TaskOutcome<PriceView & { lines: number; sheetTotals: { design: string | null; all: string | null } }>>("price:import", id),
+		toFinance: (id: string) => call<TaskOutcome<{ rows: { name: string; amount: string }[] }>>("price:toFinance", id),
+		offerDoc: (id: string, builder: string) => call<TaskOutcome<{ file: string }>>("price:offerDoc", id, builder),
+	},
+	board: {
+		get: () => call<TaskOutcome<{ root: string; rows: BoardRow[]; trackerLoaded: boolean; stats: LibraryView["trackerStats"]; today: string }>>("board:get"),
+		setStatus: (folder: string, status: BoardStatus | null, note: string) => call<Record<string, unknown>>("board:setStatus", folder, status, note),
+		projectFolders: (path: string) => call<{ sourceDir: string; outputDir: string }>("board:projectFolders", path),
+		defaults: (sourceDir?: string) => call<{ workRoot: string; tendersRoot: string | null; workFolder: string | null }>("folders:defaults", sourceDir),
+	},
+	statements: {
+		list: () => call<StatementTemplate[]>("statements:list"),
+		fromFile: (path: string, kind: StatementTemplate["kind"]) => call<TaskOutcome<{ template: StatementTemplate; residue: string[] }>>("statements:fromFile", path, kind),
+		save: (list: StatementTemplate[]) => call<StatementTemplate[]>("statements:save", list),
+	},
+	library: {
+		get: () => call<LibraryView>("library:get"),
+		harvest: () => call<TaskOutcome<{ proposals: number; builders: number }>>("library:harvest"),
+		accept: (key: string, name: string) => call<LibraryView>("library:accept", key, name),
+		merge: (key: string, objectId: string) => call<LibraryView>("library:merge", key, objectId),
+		ignore: (key: string) => call<LibraryView>("library:ignore", key),
+		saveBuilders: (b: Builder[]) => call<LibraryView>("library:saveBuilders", b),
+		importSubcontractors: () => call<TaskOutcome<{ count: number }>>("library:importSubcontractors"),
+		importTracker: () => call<TaskOutcome<{ count: number }>>("library:importTracker"),
+	},
 	roles: {
 		get: (id: string) => call<Roles>("roles:get", id),
 		save: (id: string, roles: Roles) => call<Roles>("roles:save", id, roles),
@@ -155,6 +229,7 @@ export const api = {
 		confirmBinding: (id: string, key: string, slotId: string) => call<void>("fill:confirmBinding", id, key, slotId),
 		notApplicable: (id: string, key: string, slotId: string) => call<void>("fill:notApplicable", id, key, slotId),
 		generateForm: (id: string, key: string) => call<TaskOutcome<{ file: string }>>("fill:generateForm", id, key),
+		builderCopies: (id: string, key: string) => call<TaskOutcome<{ files: string[]; blocked: string[] }>>("fill:builderFormCopies", id, key),
 		pickFile: (title: string) => call<string | null>("folders:pickFile", title),
 		techProposal: (id: string, boilerplate: string) => call<TaskOutcome<{ changes: number; rejected: number }>>("fill:techProposal", id, boilerplate),
 		techDecision: (id: string, i: number, d: "accept" | "reject" | null) => call<void>("fill:techDecision", id, i, d),

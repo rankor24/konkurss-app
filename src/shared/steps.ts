@@ -1,5 +1,6 @@
 // Step status for the rail, computed from project state only (no UI state).
 import { STEPS, type ProjectState, type StepId, type StepStatus } from "./state.js";
+import { stepsNotApplicable } from "./profile.js";
 
 export function stepStatus(s: ProjectState, step: StepId): StepStatus {
 	switch (step) {
@@ -99,7 +100,8 @@ function hasConflicts(s: ProjectState): boolean {
 }
 
 export function allStepStatuses(s: ProjectState): Record<StepId, StepStatus> {
-	return Object.fromEntries(STEPS.map((st) => [st.id, stepStatus(s, st.id)])) as Record<StepId, StepStatus>;
+	const na = stepsNotApplicable(s.profile);
+	return Object.fromEntries(STEPS.map((st) => [st.id, na.includes(st.id) ? "neattiecas" : stepStatus(s, st.id)])) as Record<StepId, StepStatus>;
 }
 
 export interface ChecklistItem {

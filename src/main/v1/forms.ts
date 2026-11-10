@@ -10,7 +10,10 @@ import { nextVersionPath, safeName, type Outcome } from "../fill/run.js";
 import { loadState, updateState } from "../project-state.js";
 import { fillDocx, inspectDocx, type ToolsConfig } from "../pytools.js";
 import { runModelTask } from "../tasks/runner.js";
-import { bindingShapeOk, isManual, producedDocuments, resolveBinding, slotKeys, vocabulary, type BindCtx } from "./bindings.js";
+import { bindingShapeOk, isBuilderBinding, isManual, producedDocuments, resolveBinding, slotKeys, vocabulary, type BindCtx } from "./bindings.js";
+import type { Builder } from "../../shared/library.js";
+import { builderKey } from "../library/harvest.js";
+import { blankEdits } from "../fill/blanks.js";
 import { loadFinance } from "./finance.js";
 import type { Registers } from "../../shared/registers.js";
 import { covers } from "../registers/registers.js";
@@ -182,6 +185,74 @@ export function setNotApplicable(p: Project, key: string, slotId: string): void 
 /** Missing data blocks file creation (decision D5): the list says exactly what is open. */
 export function blockers(sheet: FillSheet): SheetItem[] {
 	return sheet.items.filter((i) => i.kind === "cell" && i.status === "missing");
+}
+
+/** The register entry for a builder named on the project ("KUUM" ↔ "SIA “KUUM”"), by name without the legal form. */
+export function builderFor(name: string, builders: Builder[] | undefined): Builder | undefined {
+	const k = builderKey(name);
+	return (builders ?? []).find((b) => builderKey(b.name) === k || b.id === k) ?? (builders ?? []).find((b) => k.length >= 3 && (builderKey(b.name).startsWith(k) || k.startsWith(builderKey(b.name))));
+}
+
+/**
+ * One copy of a filled form per builder: the base sheet's values, with every `builder:` slot resolved from that
+ * builder's register entry. Pure — the file writing is in generateBuilderCopies.
+ */
+export function builderSheet(sheet: FillSheet, ctx: BindCtx, builder: Builder): { sheet: FillSheet; missing: string[] } {
+	const next = structuredClone(sheet);
+	const missing: string[] = [];
+	for (const it of next.items) {
+		if (it.kind !== "cell" || !isBuilderBinding(it.binding) || it.by === "manual") continue;
+		const r = resolveBinding(it.binding!, { ...ctx, builder });
+		if (!r) {
+			missing.push(it.label);
+			Object.assign(it, { value: "", status: "missing", note: `Būvnieka „${builder.name}” reģistrā nav: ${it.binding!.slice(8)}` });
+		} else Object.assign(it, { value: r.value, status: "source", note: r.note });
+	}
+	return { sheet: next, missing };
+}
+
+/** Our name, reg. Nr. and address as the company register has them (for the blanks a form leaves for "apakšuzņēmējs"). */
+export function ourCompany(reg: Registers): { ourName: string; ourRegNr: string; ourAddress: string } {
+	const f = (re: RegExp) => reg.company.fields.find((x) => re.test(x.key.trim()))?.value.trim() ?? "";
+	return { ourName: f(/^nosaukums$/i), ourRegNr: f(/re[gģ]/i).match(/\d{11}/)?.[0] ?? "", ourAddress: f(/juridisk/i) || f(/^adrese/i) };
+}
+
+/** Writes each builder's copy into Iesniedzamie\<builder>\ and records it as that builder's output. */
+export async function generateBuilderCopies(d: FormDeps, key: string, builderNames: string[]): Promise<Outcome<{ files: string[]; blocked: string[] }>> {
+	const s = loadState(d.project.outputDir);
+	const sheet = s.fills[key];
+	if (!sheet) return { ok: false, error: "Vispirms pārskati un piesaisti veidlapu." };
+	const open = blockers(sheet).filter((i) => !isBuilderBinding(i.binding));
+	if (open.length) return { ok: false, error: `Kopijas neizveidos, kamēr pamata veidlapā ${open.length} vietās nav datu: ${open.slice(0, 6).map((i) => i.label).join("; ")}.` };
+	const f = s.files.find((x) => `${x.root}:${x.rel}` === key)!;
+	const src = join(f.root === "source" ? d.project.sourceDir : d.project.outputDir, f.rel);
+	const stem = safeName(basename(src, extname(src)));
+	const ctx = bindCtx(d);
+	const files: string[] = [];
+	const blocked: string[] = [];
+	// the blanks inside sentences ("Pretendents ____", "____ (norāda pretendenta reģistrācijas numuru)")
+	const paragraphs = (await inspectDocx(d.tools, src)).paragraphs.map((p) => ({ i: p.i, text: p.text }));
+	const ours = ourCompany(d.registers);
+	for (const name of builderNames) {
+		const b = builderFor(name, d.registers.builders);
+		if (!b) {
+			blocked.push(`${name}: nav būvnieku reģistrā (Reģistri › Būvnieki)`);
+			continue;
+		}
+		const { sheet: copy, missing } = builderSheet(sheet, ctx, b);
+		const blanks = blankEdits(paragraphs, { builderName: b.name, builderRegNr: b.regNr, ...ours });
+		if (missing.length || blanks.missing.length) {
+			blocked.push(`${name}: trūkst ${[...missing, ...blanks.missing].join(", ")}`);
+			continue;
+		}
+		const edits = toEdits(copy);
+		const taken = new Set(edits.filter((e) => e.kind === "paragraph").map((e) => (e as { i: number }).i));
+		const dst = nextVersionPath(join(d.project.outputDir, "Iesniedzamie", safeName(name)), stem, extname(src));
+		await fillDocx(d.tools, { src, dst, edits: [...edits, ...blanks.edits.filter((e) => e.kind === "paragraph" && !taken.has(e.i))], legend: LEGEND });
+		updateState(d.project.outputDir, (st) => void (st.fills[key] && (st.fills[key].outputs[name] = dst)));
+		files.push(dst);
+	}
+	return { ok: true, files, blocked };
 }
 
 export async function generateForm(d: FormDeps, key: string): Promise<Outcome<{ file: string }>> {

@@ -6,7 +6,7 @@ import { loadState, updateState } from "../project-state.js";
 import { toolsConfig } from "../pytools.js";
 import * as V from "../v1/forms.js";
 import { vocabulary } from "../v1/bindings.js";
-import { collectEvidence, planEvidence } from "../v1/evidence.js";
+import { collectEvidence, evidencePlanFor } from "../v1/evidence.js";
 import { bpvConsistency, feasibility } from "../v1/feasibility.js";
 import { deadlineOf, experienceSlots, qualify } from "../v1/objects.js";
 import { loadFinance, saveFinance, totals, type Finance } from "../v1/finance.js";
@@ -76,6 +76,7 @@ export function registerPhase4(ctx: AppContext, toolsScript: string): void {
 	ipcMain.handle("fill:confirmBinding", (_e, projectId: string, key: string, slotId: string) => V.confirmBinding(ctx.project(projectId), key, slotId));
 	ipcMain.handle("fill:notApplicable", (_e, projectId: string, key: string, slotId: string) => V.setNotApplicable(ctx.project(projectId), key, slotId));
 	ipcMain.handle("fill:generateForm", (_e, projectId: string, key: string) => V.generateForm(formDeps(projectId), key));
+	ipcMain.handle("fill:builderFormCopies", (_e, projectId: string, key: string) => V.generateBuilderCopies(formDeps(projectId), key, ctx.project(projectId).builders));
 
 	// ----- technical proposal -----
 	ipcMain.handle("folders:pickFile", async (e, title: string) => {
@@ -91,13 +92,7 @@ export function registerPhase4(ctx: AppContext, toolsScript: string): void {
 	ipcMain.handle("fill:techGenerate", (_e, projectId: string) => Tech.generateTech({ project: ctx.project(projectId), tools }));
 
 	// ----- 7. Pierādījumi -----
-	const evidencePlan = (projectId: string) => {
-		const s = ctx.state(projectId);
-		const reg = ctx.store.registers();
-		const bpvIdx = s.requirements.specialisti.findIndex((x) => /b[uū]vprojekta vad[iī]t[aā]j/i.test(x.field.value ?? ""));
-		const bpv = reg.specialists.find((x) => x.id === s.choices.specialists[String(bpvIdx)]);
-		return planEvidence(s.choices, reg, bpv?.name);
-	};
+	const evidencePlan = (projectId: string) => evidencePlanFor(ctx.state(projectId), ctx.store.registers());
 	ipcMain.handle("proofs:plan", (_e, projectId: string) => evidencePlan(projectId));
 	ipcMain.handle("proofs:collect", (_e, projectId: string) => {
 		const p = ctx.project(projectId);

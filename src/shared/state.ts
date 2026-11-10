@@ -2,6 +2,8 @@
 // Shared by main process and renderer. Every model-derived value is a `Cited`.
 
 import type { ExtraSource, SourcePage } from "./sources.js";
+import type { TenderProfile } from "./profile.js";
+import type { PackManifest } from "./pack.js";
 
 export type Where = "konkurss" | "piedavajums" | "darba";
 
@@ -281,6 +283,14 @@ export interface ProjectState {
 	rolePicks?: RolePicks;
 	/** value sheets by template key ("root:rel") */
 	fills: Record<string, FillSheet>;
+	/** phase 8: procedure, subject, our role, daļas, submission channel — confirmed by a person */
+	profile?: TenderProfile;
+	/** phase 8: the last assembled pack manifest */
+	pack?: PackManifest;
+	/** phase 9: statements made from the office's templates, by pack item (`recipient|ref|number`) → file */
+	generated?: Record<string, string>;
+	/** phase 12: a mini-tender of a framework agreement took its choices and roles from this tender */
+	inheritedFrom?: { projectId: string; at: string };
 	/** later phases keep their data under their own keys */
 	[extra: string]: unknown;
 }

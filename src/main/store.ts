@@ -1,9 +1,10 @@
 // App-level data in %APPDATA%\KonkursuApp: project list, settings, encrypted Claude key.
 // Kept free of Electron imports so it can be unit-tested with plain Node; the
 // encryption functions are injected (Electron safeStorage in the app).
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, extname, join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
+import { homedir } from "node:os";
 import type { FolderSummary, Project, Settings, Variant } from "../shared/types.js";
 import { emptyRegisters, type Registers } from "./registers/registers.js";
 
@@ -19,6 +20,8 @@ export class Store {
 	constructor(
 		private dir: string,
 		private crypto: Crypto,
+		/** this Windows user's My Documents (Electron's app.getPath("documents")); tests leave it out */
+		private documentsDir?: string,
 	) {
 		mkdirSync(dir, { recursive: true });
 	}
@@ -43,7 +46,7 @@ export class Store {
 	addProject(input: { name?: string; sourceDir: string; outputDir: string; variant?: Variant | null; builders?: string[] }): Project {
 		const sourceDir = resolve(input.sourceDir);
 		const outputDir = resolve(input.outputDir);
-		const err = validateFolders(sourceDir, outputDir);
+		const err = validateFolders(sourceDir, outputDir, this.tendersRoot());
 		if (err) throw new Error(err);
 		const project: Project = {
 			id: randomUUID(),
@@ -110,15 +113,95 @@ export class Store {
 		}
 	}
 
-	registers(): Registers {
-		return { ...emptyRegisters(), ...this.read<Partial<Registers>>("registers.json", {}) };
+	/** Where registers.json lives: the shared library folder when one is set, else this PC's app folder. */
+	libraryDir(): string {
+		const shared = this.settings().libraryDir?.trim();
+		return shared ? shared : this.dir;
 	}
 
-	/** Replaces the registers; the previous file is kept as registers.prev.json. */
-	saveRegisters(r: Registers): void {
-		const f = join(this.dir, "registers.json");
-		if (existsSync(f)) copyFileSync(f, join(this.dir, "registers.prev.json"));
-		this.write("registers.json", r);
+	registers(): Registers {
+		const f = join(this.libraryDir(), "registers.json");
+		if (!existsSync(f)) return emptyRegisters();
+		try {
+			return { ...emptyRegisters(), ...(JSON.parse(readFileSync(f, "utf8")) as Partial<Registers>) };
+		} catch {
+			throw new Error(`Reģistru fails ir bojāts: ${f}. Iepriekšējā versija ir tajā pašā mapē — faila nosaukumā ir „prev”.`);
+		}
+	}
+
+	/**
+	 * Replaces the registers; the previous file is kept as registers.prev.json. In a shared library folder every
+	 * save also keeps a dated copy in backups\ and holds a short lock, so two people cannot overwrite each other.
+	 */
+	saveRegisters(r: Registers, who = "šis dators", now = new Date()): void {
+		const dir = this.libraryDir();
+		mkdirSync(dir, { recursive: true });
+		const f = join(dir, "registers.json");
+		const shared = dir !== this.dir;
+		const lock = join(dir, "registers.lock");
+		if (shared && existsSync(lock)) {
+			const held = this.lockInfo(lock);
+			if (held && held.who !== who && now.getTime() - held.at < 120_000) throw new Error(`Reģistrus šobrīd saglabā ${held.who}. Pamēģini pēc minūtes.`);
+		}
+		if (shared) writeFileSync(lock, JSON.stringify({ who, at: now.getTime() }), "utf8");
+		try {
+			if (existsSync(f)) {
+				copyFileSync(f, join(dir, "registers.prev.json"));
+				if (shared) {
+					mkdirSync(join(dir, "backups"), { recursive: true });
+					copyFileSync(f, join(dir, "backups", `registers-${now.toISOString().replace(/[:.]/g, "-")}.json`));
+				}
+			}
+			const tmp = `${f}.tmp`;
+			writeFileSync(tmp, JSON.stringify(r, null, 2), "utf8");
+			copyFileSync(tmp, f);
+			rmSync(tmp, { force: true });
+		} finally {
+			if (shared) rmSync(lock, { force: true });
+		}
+	}
+
+	private lockInfo(lock: string): { who: string; at: number } | null {
+		try {
+			return JSON.parse(readFileSync(lock, "utf8")) as { who: string; at: number };
+		} catch {
+			return null;
+		}
+	}
+
+	/** Board (phase 10): statuses a person set per tender folder, and the deadline cache. */
+	boardStatuses(): Record<string, { status: "jauns" | "izverte" | "gatavo" | "iesniegts" | "atteikts"; note: string; at: string }> {
+		return this.read("board.json", {});
+	}
+	saveBoardStatuses(m: ReturnType<Store["boardStatuses"]>): void {
+		this.write("board.json", m);
+	}
+	boardCache<T>(): Record<string, T> {
+		return this.read("board-cache.json", {});
+	}
+	saveBoardCache(c: unknown): void {
+		this.write("board-cache.json", c);
+	}
+
+	/** Where tenders' work files go: the setting, else "Konkursi" in this Windows user's own My Documents. */
+	workRoot(): string {
+		const s = this.settings().workRoot?.trim();
+		return s ? s : join(this.documentsDir ?? join(homedir(), "Documents"), "Konkursi");
+	}
+
+	/** The work folder for one tender folder: <work root>\<tender folder name>; a KONKURSS subfolder names its parent. */
+	workFolderFor(sourceDir: string): string {
+		const parts = resolve(sourceDir).split(/[\\/]+/).filter(Boolean);
+		const name = /^konkurss$/i.test(parts.at(-1) ?? "") && parts.length > 1 ? parts.at(-2)! : (parts.at(-1) ?? "konkurss");
+		return join(this.workRoot(), name);
+	}
+
+	/** The tenders folder: the setting, else B:\01_Konkursi when it exists, else null. */
+	tendersRoot(): string | null {
+		const s = this.settings().tendersRoot?.trim();
+		if (s) return s;
+		const def = "B:\\01_Konkursi";
+		return existsSync(def) ? def : null;
 	}
 
 	/** Mapping memory: form layout (skeleton) → "label#n" → binding. Learned from people's corrections. */
@@ -131,7 +214,7 @@ export class Store {
 	}
 
 	hasRegisters(): boolean {
-		return existsSync(join(this.dir, "registers.json"));
+		return existsSync(join(this.libraryDir(), "registers.json"));
 	}
 
 	runDir(projectId: string): string {
@@ -148,9 +231,17 @@ export function defaultName(sourceDir: string): string {
 }
 
 /** Plain-Latvian reason when the folder pair is unsafe, or null when fine. */
-export function validateFolders(sourceDir: string, outputDir: string): string | null {
+const inside = (child: string, parent: string) => {
+	const c = resolve(child).toLowerCase();
+	const p = resolve(parent).toLowerCase().replace(/[\\/]+$/, "");
+	return c === p || c.startsWith(p + "\\") || c.startsWith(p + "/");
+};
+
+export function validateFolders(sourceDir: string, outputDir: string, tendersRoot?: string | null): string | null {
 	if (!existsSync(sourceDir) || !statSync(sourceDir).isDirectory()) return "Izejas datu mape neeksistē.";
 	if (resolve(sourceDir).toLowerCase() === resolve(outputDir).toLowerCase()) return "Izejas dati un izvades mape nedrīkst būt viena un tā pati mape.";
+	// the tenders folder is the office's record: the app only reads it, people move finished packs there themselves
+	if (tendersRoot && inside(outputDir, tendersRoot)) return `Darba mape nedrīkst būt konkursu mapē (${tendersRoot}) — tur app neko neraksta. Izvēlies mapi šajā datorā; gatavo paku uz konkursa mapi pārvieto pats.`;
 	// Output inside the source root, or source inside the output root, are both fine:
 	// the tool server's guard keeps the source folder read-only either way.
 	return null;

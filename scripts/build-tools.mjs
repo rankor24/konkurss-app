@@ -9,7 +9,10 @@ const venvPy = join(root, ".build-venv", "Scripts", "python.exe");
 const sh = (bin, args) => execFileSync(bin, args, { cwd: root, stdio: "inherit" });
 
 if (!existsSync(venvPy)) {
-	sh("py", ["-3.14", "-m", "venv", ".build-venv"]);
+	// KONKURSS_BUILD_PY = full path to a python.exe (e.g. a 3.13 that is not on PATH); default: the py launcher's 3.14
+	const base = process.env.KONKURSS_BUILD_PY;
+	if (base) sh(base, ["-m", "venv", ".build-venv"]);
+	else sh("py", ["-3.14", "-m", "venv", ".build-venv"]);
 	sh(venvPy, ["-m", "pip", "install", "--quiet", "pyinstaller", "python-docx", "openpyxl", "pymupdf==1.27.2.3"]);
 }
 rmSync(join(root, "build", "tools"), { recursive: true, force: true });

@@ -14,6 +14,7 @@
 //   manual                 nobody can know this from our data
 import type { Choices, Requirements } from "../../shared/state.js";
 import type { Registers } from "../../shared/registers.js";
+import type { Builder } from "../../shared/library.js";
 import { formatCents, totals, type Finance } from "./finance.js";
 
 export interface BindCtx {
@@ -22,7 +23,13 @@ export interface BindCtx {
 	choices: Choices;
 	finance: Finance;
 	today: Date;
+	/** phase 9: the builder whose copy is being made; absent for the base sheet */
+	builder?: Builder;
 }
+
+export const BUILDER_FIELDS = { name: "nosaukums", regNr: "reģ. Nr.", address: "adrese", signatory: "paraksttiesīgā persona", signatoryTitle: "amats" } as const;
+export type BuilderField = keyof typeof BUILDER_FIELDS;
+export const isBuilderBinding = (id: string | undefined) => !!id && id.startsWith("builder:");
 
 const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
 const strip = (s: string) => s.replace(/\*\*/g, "").replace(/\s+/g, " ").trim();
@@ -85,6 +92,14 @@ export function resolveBinding(id: string, ctx: BindCtx): Resolved | null {
 			const c = map[arg];
 			return c != null ? { value: formatCents(c), note: `cenas (${arg})` } : null;
 		}
+		case "builder": {
+			const field = arg as BuilderField;
+			if (!(field in BUILDER_FIELDS)) return null;
+			// the base sheet holds a marker; each builder's copy gets that builder's own data
+			if (!ctx.builder) return { value: `‹būvnieks: ${BUILDER_FIELDS[field]}›`, note: "katrā būvnieka kopijā — attiecīgā būvnieka dati" };
+			const v = strip(ctx.builder[field] ?? "");
+			return v ? { value: v, note: `būvnieku reģistrs: ${ctx.builder.name}, ${BUILDER_FIELDS[field]}` } : null;
+		}
 		case "date":
 			return arg === "today" ? { value: dmy(ctx.today), note: "šodienas datums" } : null;
 		case "fixed":
@@ -102,6 +117,7 @@ export function vocabulary(ctx: BindCtx): { id: string; label: string }[] {
 	for (const f of ctx.reg.company.fields) out.push({ id: `company:${f.key}`, label: `Uzņēmums — ${f.key}` });
 	for (const a of ctx.reg.company.answers) out.push({ id: `answer:${a.key}`, label: `Standarta atbilde — ${a.key}` });
 	for (const p of ctx.reg.company.persons) out.push({ id: `person:${p.role}`, label: `Persona — ${p.role}` });
+	for (const [k, l] of Object.entries(BUILDER_FIELDS)) out.push({ id: `builder:${k}`, label: `Būvnieks (pretendents) — ${l}` });
 	for (const k of ["purchaser", "id", "subject", "contractType"] as const) out.push({ id: `tender:${k}`, label: `Konkurss — ${{ purchaser: "pasūtītājs", id: "ID", subject: "priekšmets", contractType: "līguma veids" }[k]}` });
 	ctx.req.specialisti.forEach((s, i) => {
 		for (const [w, l] of [["name", "vārds, uzvārds"], ["company", "komersants"], ["cert", "sertifikāta Nr."], ["field", "darbības sfēra"]] as const) out.push({ id: `specialist:${i}:${w}`, label: `Speciālists „${s.field.value ?? i + 1}” — ${l}` });
@@ -121,7 +137,7 @@ export function vocabulary(ctx: BindCtx): { id: string; label: string }[] {
 
 /** True when the id has the right shape (it may still resolve to nothing if the choice was not made yet). */
 export function bindingShapeOk(id: string): boolean {
-	return /^(manual|fixed:.+|date:today|company:.+|answer:.+|person:.+|tender:(purchaser|id|subject|contractType)|specialist:\d+:(name|company|cert|field)|object:[a-z]+:\d+:\d+:.+|price:(net|vat|gross|eis|row:\d+))$/.test(id);
+	return /^(manual|fixed:.+|date:today|company:.+|answer:.+|person:.+|builder:(name|regNr|address|signatory|signatoryTitle)|tender:(purchaser|id|subject|contractType)|specialist:\d+:(name|company|cert|field)|object:[a-z]+:\d+:\d+:.+|price:(net|vat|gross|eis|row:\d+))$/.test(id);
 }
 
 /** Registered fields keyed by "label#occurrence" — a stable identity for a repeated label in one form. */

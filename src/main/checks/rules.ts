@@ -11,6 +11,8 @@ import { criteriaSum } from "../tasks/phase2.js";
 import { expiring } from "../registers/registers.js";
 import { parseObject } from "../v1/objects.js";
 import { deadlineFinding } from "./submission.js";
+import { identityFinding, identityProblems } from "./identity.js";
+import { anonymityFinding, anonymityProblems } from "./anonymity.js";
 import { matrixLayout, type LodProposal, type MatrixLayout } from "../fill/matrica.js";
 
 export type { Finding, FindingStatus };
@@ -280,7 +282,22 @@ export function ruleEnergy(i: CheckInput): Finding {
 	return bad.length ? f("energy", "fail", "Energoefektīvajam kritērijam izvēlēts objekts ar sliktu energoklasi", bad.map((o) => `${o.name}: apkure ${parseObject(o).energyClass ?? "nav norādīta"}`).join("; "), { step: "kas" }) : f("energy", "ok", "Energoklases", "Izvēlētie objekti ir energoefektīvi.");
 }
 
-export const RULES = [ruleBpv, ruleSpecialists, ruleCertificates, ruleCriteriaSum, ruleDeadline, ruleCompanyName, ruleProjectCode, ruleLeftoverInstructions, ruleLeaks, ruleBuilderLeaks, ruleMarkers, ruleCoordinator, ruleLodAuthor, ruleLodPip, ruleBipVsMatricaLod, ruleSoftware, ruleEnergy] as const;
+/** Phase 9: every company carries its own reg. Nr.; a builder's copy names no other builder. */
+export function ruleIdentity(i: CheckInput): Finding {
+	const docs = i.docs.filter((d) => d.kind !== "matrica").map((d) => ({ file: d.file, builder: d.builder, text: d.text }));
+	return identityFinding(identityProblems(docs, i.registers, i.builders), docs.length);
+}
+
+/** Phase 12: a design competition's anonymous part names nobody; one devīze everywhere. ⊘ for every other tender. */
+export function ruleAnonymity(i: CheckInput): Finding {
+	const p = i.state.profile;
+	const mets = p?.submission.value === "anonīms" || p?.procedure.value === "Mets";
+	if (!mets) return { id: "anonymity", kind: "precīza", status: "na", title: "Meta anonimitāte un devīze", detail: "Konkurss nav anonīms (nav metu konkurss).", where: [] };
+	const docs = i.docs.map((d) => ({ file: d.file, text: d.text }));
+	return anonymityFinding(anonymityProblems(docs, i.registers), docs.length, []);
+}
+
+export const RULES = [ruleBpv, ruleSpecialists, ruleCertificates, ruleCriteriaSum, ruleDeadline, ruleCompanyName, ruleProjectCode, ruleLeftoverInstructions, ruleLeaks, ruleBuilderLeaks, ruleIdentity, ruleAnonymity, ruleMarkers, ruleCoordinator, ruleLodAuthor, ruleLodPip, ruleBipVsMatricaLod, ruleSoftware, ruleEnergy] as const;
 
 const ORDER: Record<FindingStatus, number> = { fail: 0, warn: 1, ok: 2, na: 3 };
 export function runRules(input: CheckInput): Finding[] {

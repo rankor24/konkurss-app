@@ -3,7 +3,7 @@
 // Originals are only read; copies never overwrite anything.
 import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { basename, extname, join } from "node:path";
-import type { Choices } from "../../shared/state.js";
+import type { Choices, ProjectState } from "../../shared/state.js";
 import type { Registers } from "../../shared/registers.js";
 
 export interface EvidenceItem {
@@ -61,6 +61,13 @@ export function planEvidence(choices: Choices, reg: Registers, bpvName: string |
 		}
 	}
 	return items;
+}
+
+/** The evidence plan for a project as step 7 shows it: chosen objects, the BPV's dossier named after the chosen BPV. */
+export function evidencePlanFor(s: ProjectState, reg: Registers): EvidenceItem[] {
+	const bpvIdx = s.requirements.specialisti.findIndex((x) => /b[uū]vprojekta vad[iī]t[aā]j/i.test(x.field.value ?? ""));
+	const bpv = reg.specialists.find((x) => x.id === s.choices.specialists[String(bpvIdx)]);
+	return planEvidence(s.choices, reg, bpv?.name);
 }
 
 /** Copies the planned files into the output folder. An existing destination is never overwritten (a counter is added). */

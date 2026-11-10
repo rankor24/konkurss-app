@@ -144,6 +144,40 @@ export function Banner({ kind = "warn", children }: { kind?: "warn" | "critical"
 	);
 }
 
+/** The three places, said the same way everywhere they are explained. */
+export const FOLDER_WHY =
+	"Konkursa mape ir biroja oficiālā kopija: tie paši faili, ko saņēmām no pasūtītāja, un tā, ko iesniedzam. Ja app tur rakstītu, nepabeigts melnraksts vai kļūda varētu sajaukties ar iesniedzamo vai pārrakstīt oriģinālu. Tāpēc app tur tikai lasa, bet gatavo paku pārvieto cilvēks — tad, kad ir pārliecināts, ka viss ir pareizi.";
+
+/**
+ * How files move: the tender folder is only read; everything the app makes is in the person's own work folder;
+ * the person moves the finished pack into the tender folder's IESNIEDZAMIE. Paths are shown when known.
+ */
+export function FolderRules({ tender, work, target, compact = false }: { tender?: string; work?: string; target?: string; compact?: boolean }) {
+	const box = (title: string, who: string, path: string | undefined, kind: "read" | "write" | "move") => (
+		<div className={`folder-box ${kind}`}>
+			<div className="folder-title">{title}</div>
+			<div className="hint">{who}</div>
+			{path && <div className="mono small folder-path" title={path}>{path}</div>}
+		</div>
+	);
+	return (
+		<div className="folder-rules" aria-label="Kur atrodas faili">
+			<div className="folder-flow">
+				{box("🔒 Konkursa mape", "app tikai lasa — nekad nemaina, nepievieno, nedzēš", tender ?? "B:\\01_Konkursi\\<konkurss>", "read")}
+				<span className="folder-arrow" aria-hidden="true">→</span>
+				{box("✎ Darba mape", "šeit app raksta visu, ko sagatavo — tikai tavā datorā", work ?? "Mani dokumenti\\Konkursi\\<konkurss>", "write")}
+				<span className="folder-arrow" aria-hidden="true">→</span>
+				{box("✋ Tu pārvieto", "kad paka gatava un parakstīta — mapes Paka saturu", target ?? "<konkursa mape>\\IESNIEDZAMIE", "move")}
+			</div>
+			{!compact && (
+				<p className="hint" style={{ margin: 0 }}>
+					<strong>Kāpēc konkursa mapi tikai lasa?</strong> {FOLDER_WHY}
+				</p>
+			)}
+		</div>
+	);
+}
+
 /**
  * A model-read value. The quote mark (“) means "the app read this in the document";
  * clicking it shows the exact sentence. A person-typed value gets no mark.

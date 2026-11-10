@@ -102,4 +102,12 @@ export interface Settings {
 	theme?: "auto" | "light" | "dark";
 	/** extra names of other tenders to look for in finished documents */
 	foreignTerms?: string[];
+	/** folder with all tender folders (YYMMDD_*), read only — default B:\01_Konkursi when it exists */
+	tendersRoot?: string;
+	/** shared library folder for registers.json (D2); empty = this PC's app folder */
+	libraryDir?: string;
+	/** the tutorial was finished or skipped once; it opens by itself only before that */
+	tourSeen?: boolean;
+	/** where each tender's work files go (one subfolder per tender) — on this PC, never inside the tenders folder */
+	workRoot?: string;
 }

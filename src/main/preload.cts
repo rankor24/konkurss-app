@@ -23,6 +23,11 @@ const INVOKE = new Set([
 	"signatures:get", "signatures:save", "signatures:pick", "eis:tick",
 	"closeout:get", "closeout:save", "closeout:addObject", "closeout:postwin", "clarify:draft",
 	"deps:status", "grok:update",
+	"profile:read", "profile:save", "pack:get", "pack:assemble", "pack:generate", "pack:identityFolder", "pack:anonymity", "projects:inherit",
+	"board:get", "board:setStatus", "board:projectFolders", "folders:defaults",
+	"price:get", "price:save", "price:import", "price:toFinance", "price:offerDoc",
+	"statements:list", "statements:fromFile", "statements:save", "fill:builderFormCopies",
+	"library:get", "library:harvest", "library:accept", "library:merge", "library:ignore", "library:saveBuilders", "library:importSubcontractors", "library:importTracker",
 	"sources:pick", "sources:add", "sources:refresh", "sources:remove", "sources:note", "sources:open",
 ]);
 const EVENTS = new Set(["agent:event", "files:progress", "task:text", "activity", "pi:login"]);

@@ -3,8 +3,9 @@ import { bytes } from "../../shared/format";
 import { DOC_KINDS, WHERE_LABELS, type DocKind, type FileEntry, type Variant, type Where } from "../../shared/state";
 import type { Project } from "../../shared/types";
 import { api, errorText, type StateBundle } from "../api";
-import { Banner, CitedValue, ScreenHead } from "../ui";
-import { VARIANTS } from "./NewProject";
+import { Banner, CitedValue, FolderRules, ScreenHead } from "../ui";
+import { tenderOf, VARIANTS } from "./NewProject";
+import { ProfileCard } from "./Profils";
 
 const TEXT_MARK: Record<FileEntry["text"], { icon: string; label: string; color: string }> = {
 	nav: { icon: "○", label: "nav nolasīts", color: "var(--ink-2)" },
@@ -106,6 +107,7 @@ export function Dokumenti({ project, bundle, reload, onProjectChanged }: { proje
 	return (
 		<div className="screen">
 			<ScreenHead title="1. Dokumenti" what="Šeit app pārskata konkursa mapi un nolasa visu dokumentu tekstu, lai tālāk varētu meklēt un salīdzināt." why="Skenētos PDF nolasīt nevar — tos jāpārbauda ar aci." />
+			<FolderRules tender={tenderOf(project.sourceDir)} work={project.outputDir} target={`${tenderOf(project.sourceDir)}\\IESNIEDZAMIE`} />
 
 			<div className="row">
 				<button className="primary" disabled={!!busy} onClick={() => run("scan", () => api.files.scan(project.id))}>Pārskatīt mapi</button>
@@ -216,6 +218,7 @@ export function Dokumenti({ project, bundle, reload, onProjectChanged }: { proje
 					{project.variant && !variant?.confirmed && <div className="hint">Konkursam saglabāts veids: {project.variant}</div>}
 				</div>
 			)}
+			{state.extractedAt && <ProfileCard project={project} profile={state.profile} reload={reload} />}
 		</div>
 	);
 }

@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import type { Expiry, KV, RegObject, Registers, Specialist } from "../../shared/registers";
 import { api } from "../api";
 import { Banner, ScreenHead, useAction } from "../ui";
+import { Apaksuznemeji, Buvnieki, Ieteikumi, LIBRARY_TABS, Teksti, Uzskaite, type LibraryTab } from "./Biblioteka";
 
-type Tab = "uznemums" | "specialisti" | "objekti";
+type Tab = "uznemums" | "specialisti" | "objekti" | LibraryTab;
+const TAB_LABELS: Record<Tab, string> = { uznemums: "Uzņēmums", specialisti: "Speciālisti", objekti: "Objekti", ...LIBRARY_TABS };
 const uid = () => crypto.randomUUID();
 
 function KVTable({ rows, onChange, keyLabel = "Lauks", valueLabel = "Vērtība" }: { rows: KV[]; onChange: (r: KV[]) => void; keyLabel?: string; valueLabel?: string }) {
@@ -26,12 +28,12 @@ function KVTable({ rows, onChange, keyLabel = "Lauks", valueLabel = "Vērtība" 
 	);
 }
 
-export function Registri() {
+export function Registri({ initialTab }: { initialTab?: string } = {}) {
 	const [reg, setReg] = useState<Registers | null>(null);
 	const [expiry, setExpiry] = useState<Expiry[]>([]);
 	const [hasData, setHasData] = useState(true);
 	const [dirty, setDirty] = useState(false);
-	const [tab, setTab] = useState<Tab>("specialisti");
+	const [tab, setTab] = useState<Tab>(initialTab && initialTab in TAB_LABELS ? (initialTab as Tab) : "specialisti");
 	const [sel, setSel] = useState<string | null>(null);
 	const act = useAction();
 
@@ -82,8 +84,8 @@ export function Registri() {
 				</Banner>
 			))}
 			<div className="row">
-				{(["uznemums", "specialisti", "objekti"] as Tab[]).map((t) => (
-					<button key={t} className={tab === t ? "primary" : ""} onClick={() => setTab(t)}>{{ uznemums: "Uzņēmums", specialisti: "Speciālisti", objekti: "Objekti" }[t]}</button>
+				{(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
+					<button key={t} data-tour={`tab-${t}`} className={tab === t ? "primary" : ""} onClick={() => (dirty && t in LIBRARY_TABS ? act.setNote("Vispirms saglabā izmaiņas — bibliotēkas cilnes saglabā reģistrus pašas.") : setTab(t))}>{TAB_LABELS[t]}</button>
 				))}
 				<span className="grow" />
 				{dirty && <span className="hint">ir nesaglabātas izmaiņas</span>}
@@ -168,14 +170,22 @@ export function Registri() {
 						<div className="card">
 							<label className="field">Nosaukums<input value={obj.name} onChange={(e) => setObj({ ...obj, name: e.target.value })} /></label>
 							<KVTable rows={obj.fields} onChange={(fields) => setObj({ ...obj, fields })} />
+							{obj.cites && Object.keys(obj.cites).length > 0 && (
+								<div className="hint">Avots: {Object.entries(obj.cites).map(([k, c]) => `${k} — ${c.file.split(/[\\/]/).slice(-3).join("\\")}`).join(" · ")}</div>
+							)}
 							<h2>Pierādījumu faili</h2>
 							<p className="hint">Kur glabājas atsauksme, būvatļauja, energosertifikāts — lai 7. solī tos var atnest. Ceļš uz failu vai mapi.</p>
-							<KVTable rows={obj.evidence.map((e) => ({ key: e.label, value: e.path }))} keyLabel="Dokuments" valueLabel="Ceļš" onChange={(rows) => setObj({ ...obj, evidence: rows.map((r) => ({ label: r.key, path: r.value })) })} />
+							<KVTable rows={obj.evidence.map((e) => ({ key: e.label, value: e.path }))} keyLabel="Dokuments" valueLabel="Ceļš" onChange={(rows) => setObj({ ...obj, evidence: rows.map((r, i) => ({ label: r.key, path: r.value, ...(obj.evidence[i]?.kind ? { kind: obj.evidence[i].kind } : {}) })) })} />
 							<div><button onClick={() => edit({ objects: reg.objects.filter((o) => o.id !== obj.id) })}>Dzēst objektu no saraksta</button></div>
 						</div>
 					) : <div className="card muted">Nav objektu.</div>}
 				</div>
 			)}
+			{tab === "ieteikumi" && <Ieteikumi objects={reg.objects} onChanged={load} />}
+			{tab === "buvnieki" && <Buvnieki />}
+			{tab === "apaksuznemeji" && <Apaksuznemeji />}
+			{tab === "teksti" && <Teksti />}
+			{tab === "uzskaite" && <Uzskaite />}
 			{hasData && <div className="hint">Importēšana no skill pārrakstītu visus šos datus, tāpēc tā ir pieejama tikai tukšiem reģistriem. Iepriekšējā versija saglabājas rezerves kopijā.</div>}
 		</div>
 	);

@@ -12,6 +12,10 @@ import { registerPhase5 } from "./ipc/phase5.js";
 import { registerPhase6 } from "./ipc/phase6.js";
 import { registerSources } from "./ipc/sources.js";
 import { registerPi } from "./ipc/pi.js";
+import { registerLibrary } from "./ipc/library.js";
+import { registerPack } from "./ipc/pack.js";
+import { registerBoard } from "./ipc/board.js";
+import { registerPricing } from "./ipc/pricing.js";
 import { existsSync } from "node:fs";
 
 const here = import.meta.dirname; // dist/main
@@ -24,11 +28,16 @@ if (app.isPackaged && !process.env.KONKURSS_TOOLS_EXE && existsSync(frozenTools)
 
 let win: BrowserWindow | null = null;
 
-const store = new Store(join(app.getPath("userData"), "data"), {
-	available: () => safeStorage.isEncryptionAvailable(),
-	encrypt: (s) => safeStorage.encryptString(s),
-	decrypt: (b) => safeStorage.decryptString(b),
-});
+const store = new Store(
+	join(app.getPath("userData"), "data"),
+	{
+		available: () => safeStorage.isEncryptionAvailable(),
+		encrypt: (s) => safeStorage.encryptString(s),
+		decrypt: (b) => safeStorage.decryptString(b),
+	},
+	// this Windows user's own "My Documents" (follows OneDrive when Documents is moved there)
+	app.getPath("documents"),
+);
 const ctx = new AppContext(
 	store,
 	{ pluginDir, skillsDir: join(pluginDir, "skills"), serverJs: join(here, "..", "mcp", "server.js") },
@@ -45,6 +54,10 @@ registerPhase5(ctx, toolsScript);
 registerPhase6(ctx, toolsScript);
 registerSources(ctx);
 registerPi(ctx);
+registerLibrary(ctx);
+registerPack(ctx, toolsScript);
+registerBoard(ctx);
+registerPricing(ctx, toolsScript);
 
 function createWindow(): void {
 	win = new BrowserWindow({

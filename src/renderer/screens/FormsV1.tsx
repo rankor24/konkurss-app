@@ -102,7 +102,18 @@ export function FormsV1({ project }: { project: Project; bundle: StateBundle }) 
 					if (r.ok) setMade((m) => [r.file, ...m]);
 					return r;
 				}, refresh)}>{act.busy === "gen" ? "Raksta…" : "Izveidot failu"}</button>
+				{project.builders.length > 0 && (
+					<button disabled={!sheet || !!act.busy} title="Katram būvniekam sava kopija ar viņa nosaukumu, reģ. Nr. un paraksttiesīgo no būvnieku reģistra" onClick={() => act.run("copies", async () => {
+						const r = await api.v1.builderCopies(id, key);
+						if (r.ok) {
+							setMade((m) => [...r.files, ...m]);
+							if (r.blocked.length) act.setNote(`Neizveidotas: ${r.blocked.join("; ")}.`);
+						}
+						return r;
+					}, refresh)}>{act.busy === "copies" ? "Raksta…" : `Būvnieku kopijas (${project.builders.length})`}</button>
+				)}
 				{made.map((f) => <span key={f} className="mono small">{f}</span>)}
+				{act.note && <span className="hint">{act.note}</span>}
 			</div>
 		</div>
 	);
