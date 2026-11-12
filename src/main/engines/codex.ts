@@ -1,7 +1,7 @@
 // Codex engine — official @openai/codex-sdk, signed in with the person's own
 // `codex login` (ChatGPT subscription). The app never touches the Codex token.
 import { Codex, type ThreadEvent, type ThreadOptions } from "@openai/codex-sdk";
-import { execFile, spawn } from "node:child_process";
+import { execFile } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
@@ -9,6 +9,7 @@ import type { RunEvent } from "../../shared/types.js";
 import type { Engine, RunOptions } from "./types.js";
 import { KONKURSS_TOOLS, MCP_SERVER_NAME } from "./types.js";
 import { shellKind } from "../../shared/activity.js";
+import { openLoginWindow } from "./login-window.js";
 
 /** How much of a tool's output the side panel keeps. */
 const OUTPUT_MAX = 2000;
@@ -137,7 +138,7 @@ export function createCodexEngine(): Engine {
 		},
 		async login() {
 			// Opens a visible window; `codex login` launches the browser sign-in itself.
-			spawn("cmd.exe", ["/c", "start", "Codex pieslēgšanās", "cmd", "/k", bundledCodexPath(), "login"], { detached: true, stdio: "ignore" }).unref();
+			openLoginWindow("Codex pieslēgšanās", bundledCodexPath(), ["login"]);
 		},
 		async run(o) {
 			try {

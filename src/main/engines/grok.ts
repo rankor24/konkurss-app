@@ -7,6 +7,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Engine, RunOptions } from "./types.js";
 import { MCP_SERVER_NAME } from "./types.js";
+import { openLoginWindow } from "./login-window.js";
 import type { RunEvent, ToolKind } from "../../shared/types.js";
 
 /**
@@ -207,7 +208,7 @@ export function createGrokEngine(): Engine {
 		async login() {
 			const bin = findGrok();
 			if (!bin) return;
-			spawn("cmd.exe", ["/c", "start", "Grok pieslēgšanās", "cmd", "/k", bin, "login"], { detached: true, stdio: "ignore" }).unref();
+			openLoginWindow("Grok pieslēgšanās", bin, ["login"]);
 		},
 		run(o) {
 			return new Promise((resolve) => {
