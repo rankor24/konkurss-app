@@ -62,7 +62,7 @@ test("Versija with a single nolikums edition says so and does not ask to compare
 test("Prasibas: six blocks, quote marks on read values, 'nav atrasts' on missing, criteria sum", async () => {
 	const { Prasibas, sumOf } = await import("../src/renderer/screens/Prasibas.tsx");
 	const html = renderToStaticMarkup(h(Prasibas, { project, bundle: bundle(), reload: async () => {} }));
-	for (const t of ["Konkursa dati", "Kas jāiesniedz", "Uzņēmuma pieredze", "Kādi speciālisti vajadzīgi", "Kā vērtē piedāvājumus", "Apakšuzņēmēji un ESPD"]) assert.match(html, new RegExp(t));
+	for (const t of ["Konkursa dati", "Kas jāiesniedz", "Pretendenta pieredze", "Speciālisti un viņu pieredze", "Apsekošana", "Nodrošinājums", "Izpildes termiņš", "Finanšu piedāvājums", "Tehniskais piedāvājums", "Apliecinājumi", "Kā vērtē piedāvājumus", "Apakšuzņēmēji"]) assert.match(html, new RegExp(t));
 	assert.match(html, /class="cite"/, "read values carry the quote mark");
 	assert.match(html, /nav atrasts — jāaizpilda pašai/);
 	assert.match(html, /Kopā 95 ⚠ nav 100/, "95 points are flagged, not accepted");

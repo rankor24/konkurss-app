@@ -1,5 +1,5 @@
 // Step status for the rail, computed from project state only (no UI state).
-import { STEPS, type ProjectState, type StepId, type StepStatus } from "./state.js";
+import { BLOCK_LABELS, KEY_BLOCKS, STEPS, type ProjectState, type StepId, type StepStatus } from "./state.js";
 
 export function stepStatus(s: ProjectState, step: StepId): StepStatus {
 	switch (step) {
@@ -21,7 +21,7 @@ export function stepStatus(s: ProjectState, step: StepId): StepStatus {
 			return "gatavs";
 		}
 		case "prasibas": {
-			const blocks = ["dati", "dokumenti", "pieredze", "specialisti", "vertesana", "apaksuznemeji"] as const;
+			const blocks = KEY_BLOCKS;
 			const read = blocks.filter((b) => s.requirements.readAt[b]).length;
 			const confirmed = blocks.filter((b) => s.requirements.confirmed[b]).length;
 			if (read === 0) return "nav";
@@ -123,16 +123,8 @@ export function checklist(s: ProjectState): ChecklistItem[] {
 		{ step: "versija", label: "Veidlapas salīdzinātas", done: !!s.versions.templatesComparedAt && s.versions.templates.every((t) => t.equal) },
 		{ step: "versija", label: "Termiņš ievadīts", done: s.deadline.date.value !== null },
 	];
-	for (const [id, label] of [
-		["dati", "Konkursa dati"],
-		["dokumenti", "Kas jāiesniedz"],
-		["pieredze", "Uzņēmuma pieredze"],
-		["specialisti", "Speciālisti"],
-		["vertesana", "Vērtēšana"],
-		["apaksuznemeji", "Apakšuzņēmēji"],
-	] as const) {
-		items.push({ step: "prasibas", label: `${label} pārbaudīts`, done: !!r.confirmed[id] });
-	}
+	// only the key blocks gate the step; Konkursa dati, Kas jāiesniedz, Vērtēšana and Apakšuzņēmēji are background
+	for (const id of KEY_BLOCKS) items.push({ step: "prasibas", label: `${BLOCK_LABELS[id]} pārbaudīts`, done: !!r.confirmed[id] });
 	return items;
 }
 

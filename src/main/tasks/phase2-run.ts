@@ -173,6 +173,7 @@ function docsForBlock(p: Project, s: ProjectState, block: BlockId): Outcome<{ do
 	const qa = docsByKind(p, s, ["qa"]);
 	const extra = extraDocs(p, s, "prasibas");
 	if (block === "dati") return { ok: true, docs: [...extra, ...nol.docs, ...docsByKind(p, s, ["tehniska_specifikacija", "iub"])] };
+	if (block === "tehnisks") return { ok: true, docs: [...extra, ...nol.docs, ...docsByKind(p, s, ["tehniska_specifikacija"]), ...qa] };
 	return { ok: true, docs: [...extra, ...nol.docs, ...qa] };
 }
 
@@ -213,6 +214,34 @@ export async function readBlock(p: Project, engine: Engine, base: Base, block: B
 			const g = T.groundVertesana(r.data, d.docs);
 			return { ok: true, rejected: g.rejected, patch: { vertesana: g.items } };
 		}
+		case "apsekosana": {
+			const r = await run(T.APSEKOSANA_INSTRUCTIONS, T.APSEKOSANA_HINT, T.apsekosanaSchema);
+			return r.ok ? { ok: true, rejected: 0, patch: { apsekosana: T.groundApsekosana(r.data, d.docs) } } : r;
+			}
+		case "nodrosinajums": {
+			const r = await run(T.NODROSINAJUMS_INSTRUCTIONS, T.NODROSINAJUMS_HINT, T.nodrosinajumsSchema);
+			return r.ok ? { ok: true, rejected: 0, patch: { nodrosinajums: T.groundNodrosinajums(r.data, d.docs) } } : r;
+			}
+		case "izpilde": {
+			const r = await run(T.IZPILDE_INSTRUCTIONS, T.IZPILDE_HINT, T.izpildeSchema);
+			return r.ok ? { ok: true, rejected: 0, patch: { izpilde: T.groundIzpilde(r.data, d.docs) } } : r;
+			}
+		case "finanses": {
+			const r = await run(T.FINANSES_INSTRUCTIONS, T.FINANSES_HINT, T.finansesSchema);
+			return r.ok ? { ok: true, rejected: 0, patch: { finanses: T.groundFinanses(r.data, d.docs) } } : r;
+			}
+		case "tehnisks": {
+			const r = await run(T.TEHNISKS_INSTRUCTIONS, T.TEHNISKS_HINT, T.tehnisksSchema);
+			if (!r.ok) return r;
+			const g = T.groundDocList(r.data, d.docs);
+			return { ok: true, rejected: g.rejected, patch: { tehnisks: g.items } };
+			}
+		case "apliecinajumi": {
+			const r = await run(T.APLIECINAJUMI_INSTRUCTIONS, T.APLIECINAJUMI_HINT, T.apliecinajumiSchema);
+			if (!r.ok) return r;
+			const g = T.groundDocList(r.data, d.docs);
+			return { ok: true, rejected: g.rejected, patch: { apliecinajumi: g.items } };
+			}
 		case "apaksuznemeji": {
 			const r = await run(pass === 1 ? T.APAKS_INSTRUCTIONS : T.APAKS_INSTRUCTIONS_2, T.APAKS_HINT, T.apaksSchema);
 			return r.ok ? { ok: true, rejected: 0, patch: { apaksuznemeji: T.groundApaks(r.data, d.docs) } } : r;

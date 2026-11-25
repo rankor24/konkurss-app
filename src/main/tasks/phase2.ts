@@ -16,6 +16,10 @@ export const QUOTE_RULES = [
 	"Tabulās citē visu rindu — šūnas ir atdalītas ar \" | \".",
 ].join("\n");
 
+/** What Boris does not want in the lists: foreign-registered parties and the ESPD. */
+export const SKIP_RULES =
+	"NEIEKĻAUJ prasības, kas attiecas tikai uz ārvalstī reģistrētiem komersantiem, būvniekiem vai speciālistiem (ārvalstu pretendentu dokumenti, ārvalstu reģistri, tulkojumi, ekvivalenti u.tml.), kā arī Eiropas vienoto iepirkuma dokumentu (EVIPD / ESPD) — tos izlaid pavisam.";
+
 // ---------- classify edition changes ----------
 export const classifySchema = z.object({ items: z.array(z.object({ i: z.number(), impact: z.enum(["kriterijs", "prasiba", "redakcionala"]) })) });
 export const CLASSIFY_HINT = `{"items": [{"i": 1, "impact": "kriterijs" | "prasiba" | "redakcionala"}]}`;
@@ -134,6 +138,7 @@ export const DOKUMENTI_HINT = `{"items": [{"name": "Pieteikums dalībai", "manda
 export const DOKUMENTI_INSTRUCTIONS = [
 	"Izraksti visus dokumentus, kas pretendentam jāiesniedz kopā ar piedāvājumu (pieteikums, kvalifikācijas dokumenti, finanšu piedāvājums, tehniskais piedāvājums, apliecinājumi, veidlapas u.c.).",
 	'"mandatory": true, ja obligāts visiem; false, ja iesniedzams tikai noteiktos gadījumos — tad "condition" apraksta nosacījumu.',
+	SKIP_RULES,
 	QUOTE_RULES,
 ].join("\n");
 
@@ -142,14 +147,17 @@ export const PIEREDZE_HINT = `{"items": [{"text": "īss prasības apraksts", "co
 export const PIEREDZE_INSTRUCTIONS = [
 	"Izraksti prasības par PRETENDENTA (uzņēmuma) pieredzi kvalifikācijai: cik objektu, kāds periods (gadi), kāda veida objekti. Speciālistu pieredzi un vērtēšanas kritērijus šeit neiekļauj.",
 	"Ja skaitļa vai perioda nav — null.",
+	SKIP_RULES,
 	QUOTE_RULES,
 ].join("\n");
 
-export const specialistiSchema = z.object({ items: z.array(z.object({ field: z.string(), certificate: q, mandatory: z.boolean(), ...itemCite })) });
-export const SPECIALISTI_HINT = `{"items": [{"field": "Atbildīgais būvprojekta vadītājs", "certificate": "kāds sertifikāts vajadzīgs", "mandatory": true, "quote": "…", "file": "…"}]}`;
+export const specialistiSchema = z.object({ items: z.array(z.object({ field: z.string(), certificate: q, experience: q.optional(), count: z.number().nullable().optional(), periodYears: z.number().nullable().optional(), mandatory: z.boolean(), ...itemCite })) });
+export const SPECIALISTI_HINT = `{"items": [{"field": "Atbildīgais būvprojekta vadītājs", "certificate": "kāds sertifikāts vajadzīgs", "experience": "kāda pieredze prasīta šim speciālistam (vai null)", "count": 2, "periodYears": 5, "mandatory": true, "quote": "…", "file": "…"}]}`;
 export const SPECIALISTI_INSTRUCTIONS = [
 	"Izraksti visus speciālistus, kas pretendentam jāpiesaista (joma / amats un prasītais sertifikāts). Katru jomu kā atsevišķu rindu — arī tad, ja tās uzskaitītas vienā teikumā.",
+	"Katram speciālistam izraksti arī PIEREDZES prasību: experience — īss apraksts (kāda veida objekti), count — cik objektos, periodYears — cik pēdējos gados. Ja pieredzes prasības nav — null.",
 	"Pārbaudi arī nolikuma veidlapas (kvalifikācijas tabulu): ja tur ir vairāk jomu nekā pamatprasībās, iekļauj visas.",
+	SKIP_RULES,
 	QUOTE_RULES,
 ].join("\n");
 
@@ -166,17 +174,88 @@ export const VERTESANA_INSTRUCTIONS_2 = [
 	"Pārbaudi grozījumus un komisijas atbildes. Citē visu kritērija rindu, kur redzami punkti.",
 ].join("\n");
 
-export const apaksSchema = z.object({ threshold: cn, espd: cs });
-export const APAKS_HINT = `{"threshold": {"value": 10000, "quote": "…", "file": "…"}, "espd": {"value": "ko prasa par ESPD/EVIPD", "quote": "…", "file": "…"}}`;
+export const apaksSchema = z.object({ threshold: cn });
+export const APAKS_HINT = `{"threshold": {"value": 10000, "quote": "…", "file": "…"}}`;
 export const APAKS_INSTRUCTIONS = [
-	"Atrodi: (1) apakšuzņēmēju slieksni — no kādas darbu vērtības (EUR) pretendentam jānorāda apakšuzņēmēji un jāiesniedz to apliecinājumi; (2) ko nolikums prasa par ESPD / EVIPD.",
+	"Atrodi apakšuzņēmēju slieksni — no kādas darbu vērtības (EUR) pretendentam jānorāda apakšuzņēmēji un jāiesniedz to apliecinājumi.",
 	"Slieksni dod kā skaitli EUR bez atstarpēm. Ja dokumentos sliekšņa nav — null.",
+	SKIP_RULES,
 	QUOTE_RULES,
 ].join("\n");
 export const APAKS_INSTRUCTIONS_2 = [
-	"Meklē vārdus „apakšuzņēmēj” un „ESPD”/„EVIPD”. Kāda ir darbu vērtība (EUR), no kuras jānorāda apakšuzņēmēji? Ko prasa par ESPD?",
+	"Meklē vārdu „apakšuzņēmēj”. Kāda ir darbu vērtība (EUR), no kuras jānorāda apakšuzņēmēji?",
 	"Ja slieksnis nav minēts — null. Atbildi ar burtisku citātu.",
 ].join("\n");
+
+// ----- the other key blocks: site visit, security, execution term, price form, technical proposal, statements -----
+export const apsekosanaSchema = z.object({ status: cs, details: cs });
+export const APSEKOSANA_HINT = `{"status": {"value": "Obligāta | Nav obligāta | Nav paredzēta", "quote": "…", "file": "…"}, "details": {"value": "kad, kur un kā pieteikties", "quote": "…", "file": "…"}}`;
+export const APSEKOSANA_INSTRUCTIONS = [
+	"Atrodi, vai nolikums paredz objekta APSEKOŠANU (apskati dabā) pirms piedāvājuma iesniegšanas.",
+	'status: tieši "Obligāta", "Nav obligāta" vai "Nav paredzēta". Ja nolikumā apsekošana nav minēta, status ir null.',
+	"details: datums un laiks, vieta, kā pieteikties un līdz kuram laikam — kā rakstīts. Ja nav — null.",
+	SKIP_RULES,
+	QUOTE_RULES,
+].join("\n");
+
+export const nodrosinajumsSchema = z.object({ offer: cs, contract: cs });
+export const NODROSINAJUMS_HINT = `{"offer": {"value": "…", "quote": "…", "file": "…"}, "contract": {"value": "…", "quote": "…", "file": "…"}}`;
+export const NODROSINAJUMS_INSTRUCTIONS = [
+	"Atrodi NODROŠINĀJUMU: (1) offer — piedāvājuma nodrošinājums (summa vai % no līgumcenas, veids — bankas garantija, apdrošināšana, depozīts —, derīguma termiņš); (2) contract — līguma izpildes nodrošinājums (summa vai %, veids, termiņš).",
+	'Ja nolikums saka, ka nodrošinājums nav jāiesniedz, value ir "Nav prasīts". Ja nodrošinājums nolikumā nav minēts vispār — null.',
+	SKIP_RULES,
+	QUOTE_RULES,
+].join("\n");
+
+export const izpildeSchema = z.object({ term: cs });
+export const IZPILDE_HINT = `{"term": {"value": "…", "quote": "…", "file": "…"}}`;
+export const IZPILDE_INSTRUCTIONS = [
+	"Atrodi IZPILDES TERMIŅU: cik ilgā laikā vai līdz kuram datumam jāveic darbi (projektēšana, autoruzraudzība, būvdarbi). Ja ir etapi, uzraksti katru etapu ar tā termiņu vienā virknē.",
+	"Termiņu raksti tā, kā tas stāv dokumentā (piem. „90 kalendārās dienas no līguma noslēgšanas”). Ja nav — null.",
+	SKIP_RULES,
+	QUOTE_RULES,
+].join("\n");
+
+export const finansesSchema = z.object({ form: cs, notes: cs });
+export const FINANSES_HINT = `{"form": {"value": "Word veidne | Excel tāme | …", "quote": "…", "file": "…"}, "notes": {"value": "ko jāietver: cena bez PVN, sadalījums …", "quote": "…", "file": "…"}}`;
+export const FINANSES_INSTRUCTIONS = [
+	"Atrodi, kādā formā jāiesniedz FINANŠU PIEDĀVĀJUMS: form — piedāvājuma veidne (Word), cenu tabula vai tāme (Excel), ievade EIS vai cits; ja prasīti vairāki, uzskaiti visus.",
+	"notes — ko finanšu piedāvājumam jāietver (cena bez PVN, sadalījums pa posmiem vai darbiem, vienību cenas, summas vārdiem u.tml.). Ja nav — null.",
+	SKIP_RULES,
+	QUOTE_RULES,
+].join("\n");
+
+const listItem = z.object({ name: z.string(), mandatory: z.boolean(), condition: q, ...itemCite });
+export const tehnisksSchema = z.object({ items: z.array(listItem) });
+export const TEHNISKS_HINT = `{"items": [{"name": "Tehniskā specifikācija / Laika grafiks / Apliecinājums", "mandatory": true, "condition": "ja … (vai null)", "quote": "…", "file": "…"}]}`;
+export const TEHNISKS_INSTRUCTIONS = [
+	"Izraksti, no kādām daļām jāsastāv TEHNISKAJAM PIEDĀVĀJUMAM: apliecinājums par atbilstību, tehniskā specifikācija (atbilstības tabula vai apraksts), laika grafiks, darbu organizācija u.c. Katru daļu kā atsevišķu rindu.",
+	'"mandatory": true, ja obligāta; false, ja prasīta tikai noteiktos gadījumos vai ar „un/vai” — tad "condition" apraksta nosacījumu.',
+	SKIP_RULES,
+	QUOTE_RULES,
+].join("\n");
+
+export const apliecinajumiSchema = z.object({ items: z.array(listItem) });
+export const APLIECINAJUMI_HINT = `{"items": [{"name": "Apliecinājums par …", "mandatory": true, "condition": "ja … (vai null)", "quote": "…", "file": "…"}]}`;
+export const APLIECINAJUMI_INSTRUCTIONS = [
+	"Atrodi visus APLIECINĀJUMUS, ko pretendentam jāiesniedz vai jāparaksta (par atbilstību prasībām, par piesaistītajiem speciālistiem, par apakšuzņēmējiem, par nodrošinājumu, par tehnisko specifikāciju u.tml.). Katru kā atsevišķu rindu: name — par ko apliecinājums.",
+	'"mandatory": true, ja obligāts; false, ja iesniedzams tikai noteiktos gadījumos — tad "condition" apraksta nosacījumu.',
+	SKIP_RULES,
+	QUOTE_RULES,
+].join("\n");
+
+export function groundApsekosana(res: z.infer<typeof apsekosanaSchema>, docs: DocInput[]): Requirements["apsekosana"] {
+	return { status: toCited(res.status, docs), details: toCited(res.details, docs) };
+}
+export function groundNodrosinajums(res: z.infer<typeof nodrosinajumsSchema>, docs: DocInput[]): Requirements["nodrosinajums"] {
+	return { offer: toCited(res.offer, docs), contract: toCited(res.contract, docs) };
+}
+export function groundIzpilde(res: z.infer<typeof izpildeSchema>, docs: DocInput[]): Requirements["izpilde"] {
+	return { term: toCited(res.term, docs) };
+}
+export function groundFinanses(res: z.infer<typeof finansesSchema>, docs: DocInput[]): Requirements["finanses"] {
+	return { form: toCited(res.form, docs), notes: toCited(res.notes, docs) };
+}
 
 // ----- grounding of lists: one verified quote per item, shared by its fields -----
 export interface Grounded<T> {
@@ -207,6 +286,11 @@ export function groundDokumenti(res: z.infer<typeof dokumentiSchema>, docs: DocI
 	return { items, rejected };
 }
 
+/** Same shape as the documents list: the technical-proposal parts and the statements. */
+export function groundDocList(res: z.infer<typeof dokumentiSchema>, docs: DocInput[]): Grounded<RequiredDoc> {
+	return groundDokumenti(res, docs);
+}
+
 export function groundPieredze(res: z.infer<typeof pieredzeSchema>, docs: DocInput[]): Grounded<ExperienceReq> {
 	const items: ExperienceReq[] = [];
 	let rejected = 0;
@@ -224,7 +308,7 @@ export function groundSpecialisti(res: z.infer<typeof specialistiSchema>, docs: 
 	for (const it of res.items) {
 		const c = itemCiteOf(it.quote, it.file, docs);
 		if (!c) rejected++;
-		else items.push({ field: field(it.field, c), certificate: field(it.certificate, c), mandatory: it.mandatory });
+		else items.push({ field: field(it.field, c), certificate: field(it.certificate, c), experience: field(it.experience ?? null, c), count: numField(it.count ?? null, c), periodYears: numField(it.periodYears ?? null, c), mandatory: it.mandatory });
 	}
 	return { items, rejected };
 }
@@ -243,7 +327,7 @@ export function groundVertesana(res: z.infer<typeof vertesanaSchema>, docs: DocI
 export function groundApaks(res: z.infer<typeof apaksSchema>, docs: DocInput[]): Requirements["apaksuznemeji"] {
 	const thr = toCited<number>(res.threshold, docs);
 	const checked = thr.status === "model" && thr.value !== null && !numberInQuote(thr.value, thr.cite!.quote) ? ({ value: null, status: "missing", note: "skaitlis nav citātā — jāaizpilda pašam" } as Cited<number>) : thr;
-	return { threshold: checked, espd: toCited(res.espd, docs) };
+	return { threshold: checked };
 }
 
 export { UNGROUNDED_NOTE };

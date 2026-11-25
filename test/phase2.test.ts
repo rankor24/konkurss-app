@@ -238,11 +238,11 @@ test("second pass: disagreement becomes a visible conflict, agreement stays clea
 	const p = makeProject("sp", [{ rel: "nolikums.docx", kind: "nolikums", text: "Termiņš 13.07.2026 plkst. 10:00\n| Cena | 65 |\n| BPV | 30 |\napakšuzņēmēji no 10 000 euro" }]);
 	R.storeDeadline(p, { date: { value: "13.07.2026", status: "model", cite: { file: "nolikums.docx", quote: "Termiņš 13.07.2026 plkst. 10:00" } }, time: { value: "10:00", status: "model", cite: { file: "nolikums.docx", quote: "Termiņš 13.07.2026 plkst. 10:00" } }, source: "nolikums" });
 	R.storeBlock(p, "vertesana", { vertesana: T.groundVertesana({ items: [{ name: "Cena", points: 65, formula: null, objectsNeeded: null, quote: "| Cena | 65 |", file: "nolikums.docx" }, { name: "BPV", points: 30, formula: null, objectsNeeded: 3, quote: "| BPV | 30 |", file: "nolikums.docx" }] }, [{ file: "nolikums.docx", text: "| Cena | 65 |\n| BPV | 30 |" }]).items });
-	R.storeBlock(p, "apaksuznemeji", { apaksuznemeji: T.groundApaks({ threshold: { value: 10000, quote: "apakšuzņēmēji no 10 000 euro", file: "nolikums.docx" }, espd: { value: null, quote: null, file: null } }, [{ file: "nolikums.docx", text: "apakšuzņēmēji no 10 000 euro" }]) });
+	R.storeBlock(p, "apaksuznemeji", { apaksuznemeji: T.groundApaks({ threshold: { value: 10000, quote: "apakšuzņēmēji no 10 000 euro", file: "nolikums.docx" } }, [{ file: "nolikums.docx", text: "apakšuzņēmēji no 10 000 euro" }]) });
 	const second = [
 		JSON.stringify({ date: { value: "13.07.2026", quote: "Termiņš 13.07.2026 plkst. 10:00", file: "nolikums.docx" }, time: { value: "10:00", quote: "Termiņš 13.07.2026 plkst. 10:00", file: "nolikums.docx" }, source: "nolikums" }),
 		JSON.stringify({ items: [{ name: "Cena", points: 65, formula: null, objectsNeeded: null, quote: "| Cena | 65 |", file: "nolikums.docx" }, { name: "BPV", points: 30, formula: null, objectsNeeded: 3, quote: "| BPV | 30 |", file: "nolikums.docx" }] }),
-		JSON.stringify({ threshold: { value: 10000, quote: "apakšuzņēmēji no 10 000 euro", file: "nolikums.docx" }, espd: { value: null, quote: null, file: null } }),
+		JSON.stringify({ threshold: { value: 10000, quote: "apakšuzņēmēji no 10 000 euro", file: "nolikums.docx" } }),
 	];
 	const r = await R.secondPass(p, fake(second), base);
 	assert.ok(r.ok);
@@ -308,4 +308,17 @@ test("numberInQuote: table cells separated by spaces are separate numbers; thous
   assert.equal(numberInQuote(250, "| AR | 200 | 200 | 300 |"), false);
   assert.ok(numberInQuote(10000, "no 10 000 euro"));
   assert.equal(numberInQuote(200300, "200 200 300"), false);
+});
+
+test("key blocks: site visit, security, term, price form, technical parts and statements are grounded in a quote", () => {
+	const docs = [{ file: "nolikums.docx", text: "Objekta apsekošana nav obligāta. Piedāvājuma nodrošinājums 1000 EUR. Izpildes termiņš 90 dienas. Finanšu piedāvājums Excel tāmē. Jāiesniedz laika grafiks. Apliecinājums par speciālistiem." }];
+	const c = (value: string, quote: string) => ({ value, quote, file: "nolikums.docx" });
+	const none = { value: null, quote: null, file: null };
+	assert.equal(T.groundApsekosana({ status: c("Nav obligāta", "Objekta apsekošana nav obligāta."), details: none }, docs).status.status, "model");
+	assert.equal(T.groundNodrosinajums({ offer: c("1000 EUR", "Piedāvājuma nodrošinājums 1000 EUR."), contract: none }, docs).contract.value, null);
+	assert.equal(T.groundIzpilde({ term: c("90 dienas", "Izpildes termiņš 90 dienas.") }, docs).term.value, "90 dienas");
+	assert.equal(T.groundFinanses({ form: c("Excel tāme", "Finanšu piedāvājums Excel tāmē."), notes: none }, docs).form.value, "Excel tāme");
+	const list = T.groundDocList({ items: [{ name: "Laika grafiks", mandatory: true, condition: null, quote: "Jāiesniedz laika grafiks.", file: "nolikums.docx" }, { name: "Izdomāts", mandatory: true, condition: null, quote: "šāda teikuma nav", file: "nolikums.docx" }] }, docs);
+	assert.equal(list.items.length, 1);
+	assert.equal(list.rejected, 1);
 });

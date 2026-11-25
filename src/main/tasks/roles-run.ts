@@ -39,6 +39,7 @@ export const ROLES_INSTRUCTIONS = [
 	"side: projektesana — projektētāja puse (BIM koordinators, VDV pārvaldnieks, modeļu autori); buvdarbi — būvnieka puse (būvdarbu vadītājs, 4D, 5D, tāmētājs, izpilddokumentācija); nav_skaidrs — dokuments nepasaka, kuras puses loma tā ir.",
 	'Speciālistu un apakšuzņēmēju sarakstos (dokumenti, kuru nosaukumā ir „saraksts”) katra tabulas rinda ir viens ieraksts: role = specialitāte, person = Vārds, uzvārds, citāts = visa rinda. Uzņēmumu ņem no sava citāta tikai tad, ja tas stāv tajā pašā rindā.',
 	"Katrai lomai burtisks citāts (10–300 zīmes) no dokumenta, kurā loma minēta (un kurā ir uzņēmums vai cilvēks, ja tos raksti), un faila nosaukums. Ja dokumentā lomas nav, to neraksti. Neizdomā lomas, personas vai uzņēmumus.",
+	"Izlaid ārvalstī reģistrētus komersantus, būvniekus un speciālistus un Eiropas vienoto iepirkuma dokumentu (EVIPD / ESPD).",
 ].join("\n");
 
 /** Kodi like "AR, BK, ŪKT": capital letters and digits only, and each one must stand in the quote itself. */

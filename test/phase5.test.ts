@@ -85,14 +85,12 @@ test("deadline: passed → fail, under 3 days → warn, later → ok, unknown/od
 	assert.equal(parseDeadline("nav", null), null);
 });
 
-test("EIS ticks: amount comes from the prices, ESPD and mandatory documents from the requirements; the app never ticks by itself", () => {
+test("EIS ticks: amount comes from the prices, mandatory documents from the requirements; the app never ticks by itself", () => {
 	const s = emptyState();
-	s.requirements.apaksuznemeji.espd = cited("ESPD jāaizpilda EIS");
 	s.requirements.apaksuznemeji.threshold = cited(10000);
 	s.requirements.dokumenti = [{ name: cited("Pieteikums dalībai"), mandatory: true }, { name: cited("Nav obligāts"), mandatory: false }];
 	const t = eisTicks(s, 12345.6);
 	assert.match(t.find((x) => x.id === "eis-amount")!.text, /12\s?345,60 EUR/);
-	assert.match(t.find((x) => x.id === "eis-espd")!.text, /ESPD jāaizpilda EIS/);
 	assert.ok(t.some((x) => x.text.includes("Pieteikums dalībai")));
 	assert.ok(!t.some((x) => x.text.includes("Nav obligāts")));
 	assert.match(eisTicks(emptyState(), null).find((x) => x.id === "eis-amount")!.source, /nav ievadītas/);

@@ -133,6 +133,10 @@ export interface SpecialistReq {
 	field: Cited<string>;
 	certificate: Cited<string>;
 	mandatory: boolean;
+	/** what experience the tender asks of this specialist (older saved states have none) */
+	experience?: Cited<string>;
+	count?: Cited<number>;
+	periodYears?: Cited<number>;
 }
 export interface Criterion {
 	name: Cited<string>;
@@ -147,7 +151,24 @@ export interface ExperienceReq {
 	objectType: Cited<string>;
 }
 
-export type BlockId = "dati" | "dokumenti" | "pieredze" | "specialisti" | "vertesana" | "apaksuznemeji";
+export type BlockId = "dati" | "dokumenti" | "pieredze" | "specialisti" | "vertesana" | "apaksuznemeji" | "apsekosana" | "nodrosinajums" | "izpilde" | "finanses" | "tehnisks" | "apliecinajumi";
+
+/** The eight things that must be clear before documents are made, in the order they are shown. The rest of the blocks are background. */
+export const KEY_BLOCKS = ["pieredze", "specialisti", "apsekosana", "nodrosinajums", "izpilde", "finanses", "tehnisks", "apliecinajumi"] as const;
+export const BLOCK_LABELS: Record<BlockId, string> = {
+	dati: "Konkursa dati",
+	dokumenti: "Kas jāiesniedz",
+	pieredze: "Pretendenta pieredze",
+	specialisti: "Speciālisti un viņu pieredze",
+	vertesana: "Vērtēšana",
+	apaksuznemeji: "Apakšuzņēmēji",
+	apsekosana: "Apsekošana",
+	nodrosinajums: "Nodrošinājums",
+	izpilde: "Izpildes termiņš",
+	finanses: "Finanšu piedāvājums",
+	tehnisks: "Tehniskais piedāvājums",
+	apliecinajumi: "Apliecinājumi",
+};
 
 export interface Requirements {
 	dati: { purchaser: Cited<string>; id: Cited<string>; subject: Cited<string>; contractType: Cited<string> };
@@ -155,7 +176,19 @@ export interface Requirements {
 	pieredze: ExperienceReq[];
 	specialisti: SpecialistReq[];
 	vertesana: Criterion[];
-	apaksuznemeji: { threshold: Cited<number>; espd: Cited<string> };
+	apaksuznemeji: { threshold: Cited<number> };
+	/** site visit: "Obligāta" / "Nav obligāta" / "Nav paredzēta", and when, where, how to register */
+	apsekosana: { status: Cited<string>; details: Cited<string> };
+	/** bid security and performance security: amount or %, form, validity */
+	nodrosinajums: { offer: Cited<string>; contract: Cited<string> };
+	/** how long the work may take, as the tender states it (per stage when it has stages) */
+	izpilde: { term: Cited<string> };
+	/** which form the price goes into (Word template, Excel estimate …) and what it must contain */
+	finanses: { form: Cited<string>; notes: Cited<string> };
+	/** parts the technical proposal must contain: apliecinājums, specification answer, time schedule … */
+	tehnisks: RequiredDoc[];
+	/** apliecinājumi (statements) the tender asks the bidder to sign or attach */
+	apliecinajumi: RequiredDoc[];
 	confirmed: Partial<Record<BlockId, boolean>>;
 	readAt: Partial<Record<BlockId, string>>;
 }
@@ -303,7 +336,13 @@ export function emptyState(): ProjectState {
 			pieredze: [],
 			specialisti: [],
 			vertesana: [],
-			apaksuznemeji: { threshold: emptyCited(), espd: emptyCited() },
+			apaksuznemeji: { threshold: emptyCited() },
+			apsekosana: { status: emptyCited(), details: emptyCited() },
+			nodrosinajums: { offer: emptyCited(), contract: emptyCited() },
+			izpilde: { term: emptyCited() },
+			finanses: { form: emptyCited(), notes: emptyCited() },
+			tehnisks: [],
+			apliecinajumi: [],
 			confirmed: {},
 			readAt: {},
 		},

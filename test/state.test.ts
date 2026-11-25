@@ -77,9 +77,9 @@ test("step status: versija flags a template mismatch as a problem", () => {
 test("step status: prasibas needs every block read and confirmed; a D6 conflict is a problem", () => {
 	const s = emptyState();
 	assert.equal(stepStatus(s, "prasibas"), "nav");
-	s.requirements.readAt.dati = "t";
+	s.requirements.readAt.pieredze = "t";
 	assert.equal(stepStatus(s, "prasibas"), "proc");
-	for (const b of ["dati", "dokumenti", "pieredze", "specialisti", "vertesana", "apaksuznemeji"] as const) {
+	for (const b of ["pieredze", "specialisti", "apsekosana", "nodrosinajums", "izpilde", "finanses", "tehnisks", "apliecinajumi"] as const) {
 		s.requirements.readAt[b] = "t";
 		s.requirements.confirmed[b] = true;
 	}
@@ -99,4 +99,13 @@ test("saveState works on a path that does not exist yet", () => {
 	const dir = join(tmp, "f", "deep", "IESNIEDZAMIE");
 	saveState(dir, emptyState());
 	assert.ok(existsSync(join(stateDir(dir), "project.json")));
+});
+
+test("step status: prasibas is gated by the eight key blocks only, not by the background blocks", () => {
+	const s = emptyState();
+	for (const b of ["pieredze", "specialisti", "apsekosana", "nodrosinajums", "izpilde", "finanses", "tehnisks", "apliecinajumi"] as const) {
+		s.requirements.readAt[b] = "t";
+		s.requirements.confirmed[b] = true;
+	}
+	assert.equal(stepStatus(s, "prasibas"), "gatavs");
 });

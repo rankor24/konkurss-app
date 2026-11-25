@@ -40,8 +40,6 @@ export function eisTicks(s: ProjectState, financeTotal: number | null): Tick[] {
 		text: financeTotal !== null ? `EIS laukā „Piedāvājuma summa” ievadīta ${financeTotal.toLocaleString("lv-LV", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR bez PVN` : "EIS laukā „Piedāvājuma summa” ievadīta tā pati summa, kas Finanšu piedāvājumā",
 		source: financeTotal !== null ? "Cenas (🔒 finanses) — tās pašas, kas Finanšu piedāvājuma veidlapā" : "cenas vēl nav ievadītas",
 	});
-	const espd = s.requirements.apaksuznemeji.espd.value;
-	ticks.push({ id: "eis-espd", text: espd ? `ESPD/EVIPD aizpildīts EIS: ${espd}` : "ESPD/EVIPD — pārbaudi, vai nolikums to prasa", source: espd ? "nolikums (apakšuzņēmēji un ESPD)" : "nolikums nav lasīts vai neprasa" });
 	const th = s.requirements.apaksuznemeji.threshold.value;
 	if (th !== null) ticks.push({ id: "eis-subs", text: `Apakšuzņēmēji, kuru daļa pārsniedz ${th.toLocaleString("lv-LV")} EUR, norādīti EIS`, source: "nolikums" });
 	for (const d of s.requirements.dokumenti.filter((x) => x.mandatory && x.name.value)) ticks.push({ id: `eis-doc-${d.name.value}`, text: `Augšupielādēts: ${d.name.value}`, source: "nolikums — iesniedzamie dokumenti" });

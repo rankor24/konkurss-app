@@ -53,9 +53,9 @@ test("checklist counts concrete items derived from state", () => {
 	s.scannedAt = s.extractedAt = "t";
 	s.versions.inForce = "amended";
 	s.deadline.date = { value: "13.07.2026", status: "manual" };
-	s.requirements.confirmed.dati = true;
+	s.requirements.confirmed.pieredze = true;
 	const items = checklist(s);
-	assert.equal(items.length, 13);
+	assert.equal(items.length, 15);
 	assert.equal(items.filter((i) => i.done).length, 6);
 });
 
